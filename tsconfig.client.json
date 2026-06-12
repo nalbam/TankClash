@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "lib": ["ES2020", "DOM"],
-    "outDir": "./dist/client"
-  },
-  "include": ["src/client/**/*", "src/shared/**/*"],
-  "exclude": ["node_modules", "dist", "src/server", "**/*.test.ts"]
-}

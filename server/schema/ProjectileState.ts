@@ -7,4 +7,7 @@ export class ProjectileState extends Schema {
   @type("number") y = 0;
   @type("number") vx = 0;
   @type("number") vy = 0;
+
+  // Server-only: remaining drill tunnel ticks (not synchronized).
+  pierceLeft = 0;
 }

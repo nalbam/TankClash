@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { MATCH, PLAYER_MAX_HEALTH } from "@shared/constants";
+import { SELECTABLE_WEAPONS } from "@shared/weapons";
 import type { PlayerView } from "../net/colyseusClient";
 
 function el<T extends HTMLElement>(id: string): T {
@@ -15,7 +16,10 @@ interface LabelEntry {
 /** DOM HUD: status bars, wind, timer, kill feed, labels, damage numbers. */
 export class Hud {
   private healthFill = el<HTMLDivElement>("health-fill");
+  private weaponLabel = el<HTMLDivElement>("hud-weapon");
   private cooldownText = el<HTMLDivElement>("hud-cooldown");
+  private weaponBar = el<HTMLDivElement>("weapon-bar");
+  private weaponSlots = new Map<string, HTMLDivElement>();
   private windArrow = el<HTMLSpanElement>("wind-arrow");
   private windValue = el<HTMLSpanElement>("wind-value");
   private roundTimer = el<HTMLDivElement>("round-timer");
@@ -36,6 +40,16 @@ export class Hud {
   private labels = new Map<string, LabelEntry>();
   private projVec = new THREE.Vector3();
 
+  constructor() {
+    SELECTABLE_WEAPONS.forEach((w, i) => {
+      const slot = document.createElement("div");
+      slot.className = "weapon-slot";
+      slot.innerHTML = `<span class="key">${i + 1}</span><span>${w.name}</span>`;
+      this.weaponBar.appendChild(slot);
+      this.weaponSlots.set(w.id, slot);
+    });
+  }
+
   setConnection(connected: boolean, ping: number, fps: number): void {
     this.connDot.className = connected ? "ok" : "bad";
     this.connText.textContent = connected ? "connected" : "disconnected";
@@ -48,6 +62,14 @@ export class Hud {
     this.healthFill.style.width = `${(Math.max(0, view.health) / PLAYER_MAX_HEALTH) * 100}%`;
     this.healthFill.style.background = view.health > 35 ? "" : "linear-gradient(90deg,#ff5d5d,#ff8c2e)";
     this.cooldownText.textContent = view.cooldown > 0 ? `RELOAD ${view.cooldown.toFixed(1)}s` : "READY";
+
+    const activeName = this.weaponSlots.has(view.weapon)
+      ? (this.weaponSlots.get(view.weapon)!.lastElementChild?.textContent ?? view.weapon)
+      : view.weapon;
+    this.weaponLabel.textContent = activeName.toUpperCase();
+    for (const [id, slot] of this.weaponSlots) {
+      slot.classList.toggle("active", id === view.weapon);
+    }
 
     const charge = view.charging ? Math.max(view.charge, predictedCharge) : predictedCharge;
     if (charge > 0.01) {

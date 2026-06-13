@@ -46,6 +46,22 @@
       #conn-dot.bad { background: var(--red); }
       #fps { color: rgba(241,233,210,0.55); }
 
+      #weapon-bar { bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; }
+      .weapon-slot {
+        display: flex; align-items: center; gap: 6px;
+        padding: 5px 10px; border-radius: 6px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid transparent;
+        font-size: 12px; color: rgba(241,233,210,0.6);
+        transition: all 0.12s;
+      }
+      .weapon-slot.active {
+        background: rgba(45,212,191,0.16);
+        border-color: var(--teal);
+        color: var(--cream);
+      }
+      .weapon-slot .key { font-weight: 700; color: var(--teal); font-size: 11px; }
+
       #charge-wrap { bottom: 60px; left: 50%; transform: translateX(-50%); width: 280px; display: none; }
       #charge-wrap .bar { height: 18px; }
       #charge-fill { background: linear-gradient(90deg, var(--teal), var(--orange)); width: 0%; }
@@ -109,6 +125,8 @@
         <div><span id="conn-dot"></span><span id="conn-text">connecting…</span></div>
         <div><span id="ping">–</span> ms · <span id="fps">– fps</span></div>
       </div>
+
+      <div id="weapon-bar" class="hud panel"></div>
 
       <div id="charge-wrap" class="hud">
         <div id="charge-label">CHARGE</div>

@@ -23,6 +23,7 @@ export class BotController {
   private moveDir = 0;
   private moveTimer = 0;
   private aimTimer = 0;
+  private weaponTimer = 0;
   private desiredCharge = 0.5;
   private hasSolution = false;
   private stuckTimer = 0;
@@ -51,11 +52,45 @@ export class BotController {
       return this.input;
     }
 
+    this.updateWeapon(sim, me, enemy, dt);
     this.updateMovement(sim, me, enemy, dt);
     this.updateAim(sim, me, enemy, dt);
     this.updateFiring(me);
 
     return this.input;
+  }
+
+  /** Pick a weapon that fits the situation: range, cover, a little variety. */
+  private updateWeapon(sim: GameSim, me: PlayerState, enemy: PlayerState, dt: number): void {
+    this.weaponTimer -= dt;
+    if (this.weaponTimer > 0 || me.charging) return;
+    this.weaponTimer = randRange(this.rng, 2.5, 4.5);
+
+    const range = Math.abs(enemy.x - me.x);
+    const blocked = !this.lineOfSight(sim, me, enemy);
+    let choice: string;
+    if (range < 26) {
+      choice = "shotgun";
+    } else if (blocked) {
+      choice = this.rng() < 0.5 ? "mortar" : "drill";
+    } else if (this.rng() < 0.3) {
+      choice = "cluster";
+    } else {
+      choice = "cannon";
+    }
+    sim.selectWeapon(this.id, choice);
+  }
+
+  /** Sample the straight line between tanks for blocking terrain. */
+  private lineOfSight(sim: GameSim, me: PlayerState, enemy: PlayerState): boolean {
+    const steps = 24;
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const x = me.x + (enemy.x - me.x) * t;
+      const y = me.y + (enemy.y - me.y) * t + 1;
+      if (sim.terrain.solidAtWorld(x, y)) return false;
+    }
+    return true;
   }
 
   private nearestEnemy(sim: GameSim, me: PlayerState): PlayerState | null {
@@ -137,6 +172,7 @@ export class BotController {
       def.minSpeed,
       def.maxSpeed,
       sim.state.wind * def.windInfluence,
+      def.gravityScale,
     );
 
     if (!solution) {
@@ -208,11 +244,14 @@ function solveBallistic(
   minSpeed: number,
   maxSpeed: number,
   wind: number,
+  gravityScale: number,
 ): { angle: number; speed: number } | null {
-  const g = -GRAVITY;
+  // Match the projectile's actual gravity so flat (drill) and lobbed (mortar)
+  // weapons are aimed correctly. Scan low angles too for near-direct fire.
+  const g = -GRAVITY * gravityScale;
   const dir = Math.sign(dx) || 1;
   const adx = Math.abs(dx);
-  for (let deg = 30; deg <= 75; deg += 5) {
+  for (let deg = 12; deg <= 75; deg += 3) {
     const theta = (deg * Math.PI) / 180;
     const cos = Math.cos(theta);
     const tan = Math.tan(theta);

@@ -59,7 +59,7 @@ describe("projectile physics", () => {
     }
     expect(impact).not.toBeNull();
     expect(impact).not.toBe("out");
-    if (impact && impact !== "out") {
+    if (impact && impact !== "out" && !("pierce" in impact)) {
       expect(impact.y).toBeLessThanOrEqual(20.5);
       expect(impact.directHitId).toBeNull();
     }
@@ -75,7 +75,7 @@ describe("projectile physics", () => {
       impact = stepProjectile(proj, CANNON, terrain, 0, [["victim", victim]], FIXED_DT);
     }
     expect(impact).not.toBeNull();
-    if (impact && impact !== "out") {
+    if (impact && impact !== "out" && !("pierce" in impact)) {
       expect(impact.directHitId).toBe("victim");
     }
   });

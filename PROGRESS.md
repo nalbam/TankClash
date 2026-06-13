@@ -71,3 +71,39 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   replayability 8. **Milestone 1 stopping condition met.**
 - Future work (Milestone 2+): more weapons, minimap, multiple arenas, 2v2,
   spectator, projectile prediction, rollback.
+
+---
+
+# Milestone 2
+
+## Iteration 5 — 2026-06-13 (weapon arsenal)
+
+- Changed: extended the weapon system from one cannon to **five distinct,
+  data-driven weapons** plus a cluster child. `WeaponDef` now carries behavior
+  modifiers (`pellets`/`spread`, `splitOnImpact`, `pierce`/`pierceRadius`,
+  `gravityScale`) so each weapon has a real role:
+  - **Cannon** — balanced arc baseline
+  - **Mortar** — heavy high-arc lobber (gravityScale 1.35), big crater/splash, drops behind cover
+  - **Shotgun Shell** — 6-pellet spread cone, devastating up close, scatters at range
+  - **Cluster Rocket** — flat rocket that bursts into 5 bomblets on impact (area denial)
+  - **Drill Missile** — tunnels through terrain (`stepProjectile` pierce path carves a tunnel each tick) then detonates, defeating cover
+  Added weapon selection: number keys 1–5 → server message → authoritative
+  switch (blocked mid-charge / for non-selectable ids), a HUD weapon bar that
+  highlights the active slot, and bot weapon choice by range + line-of-sight
+  (shotgun close, mortar/drill vs cover, cluster/cannon open).
+- Gates: typecheck PASS | tests PASS (33/33, +6 weapon tests) | bot match PASS | screenshots OK
+- Measurements:
+  - `tests/weapons.test.ts` proves shotgun spawns N pellets, cluster spawns
+    bomblets on impact, drill removes solid cells (tunnels), and the catalog has
+    5 unique selectable roles with the bomblet non-selectable
+  - match:sim — after fixing the bot ballistic solver to honor per-weapon
+    `gravityScale` (root cause: solver assumed normal gravity, so mortar/drill
+    shots missed and matches ballooned to 121 s / 1159 craters), matches
+    normalized to 7–58 s with 101–293 craters and varied winners
+- Rubric deltas:
+  - bot usefulness 8 → 9 (situational weapon choice; solver matches each weapon's arc)
+  - terrain destruction quality 8 → 9 (drill tunnels + cluster spread reshape the arena, visible in t10s screenshot)
+  - combat clarity stays 9 (weapon bar + active highlight readable in screenshot)
+  - replayability 8 → 9 (five weapons with distinct counterplay)
+- Next target: minimap + multiple arena layouts (Milestone 2), then particle/
+  visual polish per weapon.

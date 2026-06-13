@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GRAVITY, VEHICLE } from "@shared/constants";
 import type { TerrainGrid } from "@shared/terrain";
-import { CANNON } from "@shared/weapons";
+import type { WeaponDef } from "@shared/weapons";
 
 const POINTS = 36;
 const SIM_DT = 0.06;
@@ -57,6 +57,7 @@ export class TrajectoryPreview {
 
   update(
     visible: boolean,
+    def: WeaponDef,
     tankX: number,
     tankY: number,
     aimAngle: number,
@@ -67,7 +68,7 @@ export class TrajectoryPreview {
     this.points.visible = visible;
     if (!visible) return;
 
-    const speed = CANNON.minSpeed + (CANNON.maxSpeed - CANNON.minSpeed) * charge;
+    const speed = def.minSpeed + (def.maxSpeed - def.minSpeed) * charge;
     const cos = Math.cos(aimAngle);
     const sin = Math.sin(aimAngle);
     let x = tankX + cos * MUZZLE_OFFSET;
@@ -78,8 +79,8 @@ export class TrajectoryPreview {
     let hit = false;
     for (let i = 0; i < POINTS; i++) {
       if (!hit) {
-        vx += wind * CANNON.windInfluence * SIM_DT;
-        vy += GRAVITY * SIM_DT;
+        vx += wind * def.windInfluence * SIM_DT;
+        vy += GRAVITY * def.gravityScale * SIM_DT;
         x += vx * SIM_DT;
         y += vy * SIM_DT;
         if (terrain.solidAtWorld(x, y) || y < -10) hit = true;

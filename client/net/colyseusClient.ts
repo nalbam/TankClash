@@ -130,6 +130,10 @@ export class NetClient {
     if (this.connected) this.room.send(MSG.RESTART);
   }
 
+  sendSelectWeapon(weaponId: string): void {
+    if (this.connected) this.room.send(MSG.SELECT_WEAPON, weaponId);
+  }
+
   get state() {
     return this.room?.state;
   }

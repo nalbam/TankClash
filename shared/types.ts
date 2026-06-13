@@ -47,6 +47,7 @@ export interface TerrainInit {
 export const MSG = {
   INPUT: "input",
   RESTART: "restart",
+  SELECT_WEAPON: "selectWeapon",
   TERRAIN_INIT: "terrainInit",
   CRATER: "crater",
   EXPLOSION: "explosion",

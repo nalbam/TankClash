@@ -36,6 +36,9 @@ export class TankClashRoom extends Room<GameState> {
     this.onMessage(MSG.RESTART, () => {
       this.sim.requestRestart();
     });
+    this.onMessage(MSG.SELECT_WEAPON, (client, weaponId) => {
+      if (typeof weaponId === "string") this.sim.selectWeapon(client.sessionId, weaponId);
+    });
     this.onMessage(MSG.PING, (client, t) => {
       client.send(MSG.PONG, t);
     });

@@ -2,14 +2,16 @@ import { FIXED_DT, PLAYER_MAX_HEALTH, VEHICLE, WORLD_WIDTH } from "../shared/con
 import { clamp, createRng, randRange } from "../shared/math";
 import { TerrainGrid } from "../shared/terrain";
 import type { CraterEvent, PlayerInput, TeamId } from "../shared/types";
-import { WEAPONS } from "../shared/weapons";
+import { WEAPONS, type WeaponDef } from "../shared/weapons";
 import { GameState } from "./schema/GameState";
 import { PlayerState } from "./schema/PlayerState";
+import type { ProjectileState } from "./schema/ProjectileState";
 import { createSimEvents, type SimEvents } from "./simEvents";
 import { applyExplosion } from "./systems/damageSystem";
 import { stepMatch, type MatchRuntime } from "./systems/matchSystem";
 import { stepProjectile, stepVehicle } from "./systems/physicsSystem";
-import { stepWeapon } from "./systems/weaponSystem";
+import { spawnProjectile, stepWeapon } from "./systems/weaponSystem";
+import { carveCrater } from "./systems/terrainSystem";
 import { stepWind, type WindRuntime } from "./systems/windSystem";
 
 /**
@@ -92,18 +94,16 @@ export class GameSim {
         );
         if (result === "out") {
           toRemove.push(id);
+        } else if (result && "pierce" in result) {
+          // Drill bores a tunnel and keeps flying until pierce is spent.
+          carveCrater(this.terrain, this.craters, this.events, result.x, result.y, def.pierceRadius ?? 1.5);
+          proj.pierceLeft -= 1;
+          if (proj.pierceLeft <= 0) {
+            this.detonate(proj, def, result.x, result.y, null);
+            toRemove.push(id);
+          }
         } else if (result) {
-          applyExplosion(
-            this.state,
-            this.terrain,
-            this.craters,
-            this.events,
-            result.x,
-            result.y,
-            def,
-            proj.ownerId,
-            result.directHitId,
-          );
+          this.detonate(proj, def, result.x, result.y, result.directHitId);
           toRemove.push(id);
         }
       });
@@ -115,6 +115,47 @@ export class GameSim {
       this.match.wantsRestart = false;
       this.resetRound();
     }
+  }
+
+  /** Explosion + optional cluster split into child projectiles. */
+  private detonate(
+    proj: ProjectileState,
+    def: WeaponDef,
+    x: number,
+    y: number,
+    directHitId: string | null,
+  ): void {
+    applyExplosion(this.state, this.terrain, this.craters, this.events, x, y, def, proj.ownerId, directHitId);
+
+    const split = def.splitOnImpact;
+    if (!split) return;
+    const childDef = WEAPONS[split.weapon];
+    if (!childDef) return;
+    for (let i = 0; i < split.count; i++) {
+      // Deterministic upward fan so bomblets scatter without RNG.
+      const spread = (i / Math.max(1, split.count - 1) - 0.5) * 1.5;
+      const angle = Math.PI * 0.5 + spread;
+      const speedScale = 0.7 + 0.3 * (1 - Math.abs(spread));
+      spawnProjectile(
+        this.state,
+        childDef,
+        proj.ownerId,
+        x,
+        y + 0.6,
+        angle,
+        split.speed * speedScale,
+        () => `p${this.nextProjId++}`,
+      );
+    }
+  }
+
+  /** Switch the active weapon (ignored mid-charge or for non-selectable ids). */
+  selectWeapon(id: string, weaponId: string): void {
+    const p = this.state.players.get(id);
+    if (!p || !p.alive || p.charging) return;
+    const def = WEAPONS[weaponId];
+    if (!def || !def.selectable) return;
+    p.weapon = weaponId;
   }
 
   /** Player-initiated restart from the win screen. */

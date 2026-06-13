@@ -1,4 +1,4 @@
-import { CANNON } from "@shared/weapons";
+import { CANNON, SELECTABLE_WEAPONS, WEAPONS } from "@shared/weapons";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared/constants";
 import { AudioManager } from "./audio/audio";
 import { InputManager } from "./input/input";
@@ -106,6 +106,10 @@ async function boot() {
     if (input.consumeRestart() && state?.phase === "ended") {
       net.sendRestart();
     }
+    const weaponPick = input.consumeWeaponSelect();
+    if (weaponPick !== null && SELECTABLE_WEAPONS[weaponPick]) {
+      net.sendSelectWeapon(SELECTABLE_WEAPONS[weaponPick].id);
+    }
 
     const { players, projectiles } = net.interpolated();
     const local = players.get(net.sessionId);
@@ -115,9 +119,10 @@ async function boot() {
       local.y = predictor.body.y;
     }
 
-    // Local charge prediction for a responsive meter.
+    // Local charge prediction for a responsive meter (uses the selected weapon).
+    const localDef = (local && WEAPONS[local.weapon]) || CANNON;
     if (input.charging && local?.alive && local.cooldown <= 0) {
-      predictedCharge = Math.min(1, predictedCharge + dt / CANNON.chargeTime);
+      predictedCharge = Math.min(1, predictedCharge + dt / localDef.chargeTime);
     } else {
       predictedCharge = 0;
     }
@@ -145,6 +150,7 @@ async function boot() {
     // Aim preview: local angle for zero-latency feedback, server constants for truth.
     trajectory.update(
       Boolean(local?.alive && state?.phase === "playing"),
+      localDef,
       local?.x ?? 0,
       local?.y ?? 0,
       input.aimAngle,

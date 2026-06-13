@@ -11,6 +11,7 @@ export class InputManager {
   private mouseNdc = new THREE.Vector2();
   private dashQueued = false;
   private restartQueued = false;
+  private weaponQueued: number | null = null;
   private seq = 0;
   scoreboardOpen = false;
   aimAngle = 0;
@@ -21,6 +22,8 @@ export class InputManager {
       this.keys.add(e.code);
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.dashQueued = true;
       if (e.code === "Enter") this.restartQueued = true;
+      const digit = e.code.match(/^Digit([1-5])$/);
+      if (digit) this.weaponQueued = Number(digit[1]) - 1;
       if (e.code === "Tab") {
         this.scoreboardOpen = true;
         e.preventDefault();
@@ -84,5 +87,12 @@ export class InputManager {
     const r = this.restartQueued;
     this.restartQueued = false;
     return r;
+  }
+
+  /** Returns a 0-based weapon index if a number key was pressed since last call. */
+  consumeWeaponSelect(): number | null {
+    const w = this.weaponQueued;
+    this.weaponQueued = null;
+    return w;
   }
 }

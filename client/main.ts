@@ -198,7 +198,8 @@ async function boot() {
       hud.setRound(state.phase, state.roundTime, state.winnerTeam);
     }
     hud.updateLabels(players, followCam.camera, net.sessionId);
-    hud.updateScoreboard(players, input.scoreboardOpen);
+    // Round summary: auto-show the scoreboard while a round is over.
+    hud.updateScoreboard(players, input.scoreboardOpen || state?.phase === "ended");
     minimap.update(net.terrain, players, net.sessionId, terrainChanged || hadCraters);
 
     // Reconnect banner overrides the waiting/empty overlay while a drop heals.

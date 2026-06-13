@@ -190,3 +190,20 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - replayability 10 → stays 10 (now ten weapons × four arenas)
   - combat clarity stays 9; bot usefulness stays 9 (weapon-aware aim holds with railgun)
 - Next target: 2v2 team mode + round summary, then spectator mode + lobby.
+
+## Iteration 9 — 2026-06-13 (2v2 + round summary)
+
+- Changed: the room now fills bots up to a mode-driven tank count (`fillTo` = 2
+  for 1v1, 4 for 2v2) with named bots, so a 2v2 match assembles two players per
+  team (the existing alternating team assignment makes the split even). Added a
+  **round summary**: the scoreboard auto-shows while a round is over (kills are
+  cumulative across the match), and the winner banner moved up so both read
+  cleanly together.
+- Gates: typecheck PASS | tests PASS (45/45, +3 team-match) | bot match PASS | screenshots OK
+- Measurements:
+  - `tests/match.test.ts` — proves four players split into 2v2, a round ends
+    only when a whole team is wiped, and survives while both teams have a
+    survivor (the win condition already generalized from 1v1)
+  - match:sim (1v1 regression) and screenshot gate both green
+- Rubric deltas: no regressions; 2v2 broadens match variety (replayability holds at 10).
+- Next target: spectator mode + lobby/menu for choosing 1v1 vs 2v2.

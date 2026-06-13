@@ -5,6 +5,8 @@ import { BotController } from "../bots/BotController";
 import { GameSim } from "../GameSim";
 import type { GameState } from "../schema/GameState";
 
+const BOT_NAMES = ["Rusty", "Boltz", "Crank", "Vex"];
+
 export class TankClashRoom extends Room<GameState> {
   maxClients = 8;
 
@@ -12,9 +14,12 @@ export class TankClashRoom extends Room<GameState> {
   private bots = new Map<string, BotController>();
   private accumulator = 0;
   private lastSeed = 0;
+  /** Total tanks to keep in the match (humans + bots): 2 for 1v1, 4 for 2v2. */
+  private fillTo = 2;
 
-  onCreate(options: { seed?: number } = {}) {
+  onCreate(options: { seed?: number; mode?: string } = {}) {
     const seed = Number.isFinite(options.seed) ? Number(options.seed) >>> 0 : (Date.now() & 0x7fffffff) >>> 0;
+    this.fillTo = options.mode === "2v2" ? 4 : 2;
     this.sim = new GameSim(seed);
     this.lastSeed = this.sim.state.terrainSeed;
     this.setState(this.sim.state);
@@ -47,7 +52,7 @@ export class TankClashRoom extends Room<GameState> {
   onJoin(client: Client, options: { name?: string } = {}) {
     const name = typeof options.name === "string" && options.name.trim() ? options.name.trim().slice(0, 16) : "Player";
     this.sim.addPlayer(client.sessionId, name, false);
-    this.ensureBot();
+    this.fillBots();
     const init: TerrainInit = { seed: this.sim.state.terrainSeed, craters: this.sim.craters };
     client.send(MSG.TERRAIN_INIT, init);
   }
@@ -56,12 +61,17 @@ export class TankClashRoom extends Room<GameState> {
     this.sim.removePlayer(client.sessionId);
   }
 
-  private ensureBot() {
-    if (this.sim.state.players.size >= 2) return;
-    const id = "bot:rusty";
-    if (this.sim.state.players.has(id)) return;
-    this.sim.addPlayer(id, "BOT Rusty", true);
-    this.bots.set(id, new BotController(id, this.sim.state.terrainSeed ^ 0xb07));
+  /** Top up the match with bots so it reaches the mode's tank count. */
+  private fillBots() {
+    let i = 0;
+    while (this.sim.state.players.size < this.fillTo && i < 8) {
+      const id = `bot:${i}`;
+      if (!this.sim.state.players.has(id)) {
+        this.sim.addPlayer(id, `BOT ${BOT_NAMES[i % BOT_NAMES.length]}`, true);
+        this.bots.set(id, new BotController(id, (this.sim.state.terrainSeed ^ (0xb07 + i * 131)) >>> 0));
+      }
+      i++;
+    }
   }
 
   private fixedTick() {

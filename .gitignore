@@ -7,10 +7,7 @@ node_modules/
 # Build outputs
 # ============================================
 dist/
-public/bundle.js
-public/bundle.js.map
-public/bundle.js.LICENSE.txt
-public/index.html
+public/
 
 # ============================================
 # Environment variables

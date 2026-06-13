@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TankClash</title>
+    <style>
+      :root {
+        --teal: #2dd4bf;
+        --navy: #0b1226;
+        --cream: #f1e9d2;
+        --blue: #4da3ff;
+        --red: #ff5d5d;
+        --orange: #ff8c2e;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: var(--navy); }
+      body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--cream); user-select: none; }
+      #app { position: relative; width: 100%; height: 100%; }
+      canvas { display: block; }
+
+      .hud { position: absolute; pointer-events: none; }
+      .panel {
+        background: rgba(11, 18, 38, 0.72);
+        border: 1px solid rgba(45, 212, 191, 0.35);
+        border-radius: 8px;
+        padding: 8px 12px;
+        backdrop-filter: blur(2px);
+      }
+
+      #hud-status { top: 12px; left: 12px; min-width: 220px; }
+      .bar { height: 14px; border-radius: 7px; background: rgba(255,255,255,0.12); overflow: hidden; margin-top: 4px; }
+      .bar > div { height: 100%; border-radius: 7px; transition: width 0.12s linear; }
+      #health-fill { background: linear-gradient(90deg, #38e07b, #b8f55a); width: 100%; }
+      #hud-weapon { font-size: 12px; letter-spacing: 0.08em; color: var(--teal); margin-top: 6px; text-transform: uppercase; }
+      #hud-cooldown { font-size: 11px; color: rgba(241,233,210,0.7); }
+
+      #hud-top { top: 12px; left: 50%; transform: translateX(-50%); text-align: center; }
+      #wind-row { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 13px; }
+      #wind-arrow { font-size: 18px; color: var(--teal); min-width: 70px; letter-spacing: -2px; }
+      #round-timer { font-size: 20px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+      #hud-net { top: 12px; right: 12px; text-align: right; font-size: 12px; }
+      #conn-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #888; margin-right: 6px; }
+      #conn-dot.ok { background: #38e07b; }
+      #conn-dot.bad { background: var(--red); }
+      #fps { color: rgba(241,233,210,0.55); }
+
+      #charge-wrap { bottom: 60px; left: 50%; transform: translateX(-50%); width: 280px; display: none; }
+      #charge-wrap .bar { height: 18px; }
+      #charge-fill { background: linear-gradient(90deg, var(--teal), var(--orange)); width: 0%; }
+      #charge-label { font-size: 11px; text-align: center; letter-spacing: 0.2em; color: var(--teal); }
+
+      #killfeed { top: 70px; right: 12px; text-align: right; font-size: 13px; }
+      .kill-entry { margin-top: 4px; padding: 4px 10px; opacity: 0.95; }
+      .team-blue { color: var(--blue); font-weight: 600; }
+      .team-red { color: var(--red); font-weight: 600; }
+
+      #announce { top: 34%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none; }
+      #announce h1 { font-size: 56px; letter-spacing: 0.06em; text-shadow: 0 4px 24px rgba(0,0,0,0.6); }
+      #announce p { margin-top: 10px; font-size: 16px; color: var(--teal); letter-spacing: 0.1em; }
+
+      #scoreboard { top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; min-width: 380px; }
+      #scoreboard table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      #scoreboard th, #scoreboard td { padding: 6px 12px; text-align: left; }
+      #scoreboard th { color: var(--teal); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; }
+      #scoreboard tr + tr td { border-top: 1px solid rgba(255,255,255,0.08); }
+
+      #labels { inset: 0; overflow: hidden; }
+      .tank-label { position: absolute; transform: translate(-50%, -100%); text-align: center; will-change: left, top; }
+      .tank-name { font-size: 11px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+      .tank-hp { width: 56px; height: 6px; background: rgba(0,0,0,0.55); border-radius: 3px; margin: 2px auto 0; overflow: hidden; }
+      .tank-hp > div { height: 100%; background: #38e07b; }
+      .dmg-float {
+        position: absolute; transform: translate(-50%, -50%);
+        font-weight: 800; font-size: 18px; color: var(--orange);
+        text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        animation: dmg-rise 0.9s ease-out forwards;
+      }
+      @keyframes dmg-rise {
+        from { opacity: 1; margin-top: 0; }
+        to { opacity: 0; margin-top: -46px; }
+      }
+
+      #overlay-msg { top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 20px; letter-spacing: 0.1em; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="labels" class="hud"></div>
+
+      <div id="hud-status" class="hud panel">
+        <div style="font-size:12px;letter-spacing:0.15em;color:rgba(241,233,210,0.7)">HEALTH</div>
+        <div class="bar"><div id="health-fill"></div></div>
+        <div id="hud-weapon">CANNON</div>
+        <div id="hud-cooldown">READY</div>
+      </div>
+
+      <div id="hud-top" class="hud panel">
+        <div id="wind-row">
+          <span style="font-size:11px;letter-spacing:0.15em;color:rgba(241,233,210,0.7)">WIND</span>
+          <span id="wind-arrow">·</span>
+          <span id="wind-value">0.0</span>
+        </div>
+        <div id="round-timer">0:00</div>
+      </div>
+
+      <div id="hud-net" class="hud panel">
+        <div><span id="conn-dot"></span><span id="conn-text">connecting…</span></div>
+        <div><span id="ping">–</span> ms · <span id="fps">– fps</span></div>
+      </div>
+
+      <div id="charge-wrap" class="hud">
+        <div id="charge-label">CHARGE</div>
+        <div class="bar"><div id="charge-fill"></div></div>
+      </div>
+
+      <div id="killfeed" class="hud"></div>
+
+      <div id="announce" class="hud">
+        <h1 id="announce-title">BLUE WINS</h1>
+        <p>PRESS ENTER TO RESTART</p>
+      </div>
+
+      <div id="scoreboard" class="hud panel">
+        <table>
+          <thead><tr><th>Player</th><th>Team</th><th>Kills</th><th>HP</th></tr></thead>
+          <tbody id="scoreboard-body"></tbody>
+        </table>
+      </div>
+
+      <div id="overlay-msg" class="hud panel" style="display:none"></div>
+    </div>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

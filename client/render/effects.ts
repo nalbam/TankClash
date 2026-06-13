@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { WEAPONS } from "@shared/weapons";
 import type { ProjectileView } from "../net/colyseusClient";
 
 interface Particle {
@@ -41,45 +42,61 @@ export class Effects {
   private projectileMeshes = new Map<string, THREE.Mesh>();
   private trailTimer = 0;
 
-  private fireMat: THREE.SpriteMaterial;
+  private glowTex = makeRadialTexture("rgba(255,255,255,1)", "rgba(255,255,255,0)");
   private smokeMat: THREE.SpriteMaterial;
-  private trailMat: THREE.SpriteMaterial;
-  private projGeo = new THREE.SphereGeometry(0.45, 10, 8);
-  private projMat = new THREE.MeshBasicMaterial({ color: 0xffd27a });
+  private projGeo = new THREE.SphereGeometry(1, 10, 8);
+  // Per-color material caches so each weapon keeps its visual identity.
+  private glowMats = new Map<number, THREE.SpriteMaterial>();
+  private projMats = new Map<number, THREE.MeshBasicMaterial>();
 
   constructor() {
-    this.fireMat = new THREE.SpriteMaterial({
-      map: makeRadialTexture("rgba(255,220,150,1)", "rgba(255,90,20,0)"),
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      transparent: true,
-    });
     this.smokeMat = new THREE.SpriteMaterial({
       map: makeRadialTexture("rgba(90,90,100,0.8)", "rgba(60,60,70,0)"),
       depthWrite: false,
       transparent: true,
     });
-    this.trailMat = new THREE.SpriteMaterial({
-      map: makeRadialTexture("rgba(255,200,120,0.9)", "rgba(255,140,46,0)"),
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      transparent: true,
-    });
 
+    const defaultMat = this.glowMatFor(0xffd27a);
     for (let i = 0; i < POOL_SIZE; i++) {
-      const sprite = new THREE.Sprite(this.fireMat);
+      const sprite = new THREE.Sprite(defaultMat);
       sprite.visible = false;
       this.group.add(sprite);
       this.pool.push({ sprite, vx: 0, vy: 0, life: 0, maxLife: 1, size: 1, gravity: 0 });
     }
   }
 
-  spawnExplosion(x: number, y: number, r: number): void {
+  private glowMatFor(color: number): THREE.SpriteMaterial {
+    let m = this.glowMats.get(color);
+    if (!m) {
+      m = new THREE.SpriteMaterial({
+        map: this.glowTex,
+        color,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        transparent: true,
+      });
+      this.glowMats.set(color, m);
+    }
+    return m;
+  }
+
+  private projMatFor(color: number): THREE.MeshBasicMaterial {
+    let m = this.projMats.get(color);
+    if (!m) {
+      m = new THREE.MeshBasicMaterial({ color });
+      this.projMats.set(color, m);
+    }
+    return m;
+  }
+
+  spawnExplosion(x: number, y: number, r: number, weapon = "cannon"): void {
+    const def = WEAPONS[weapon];
+    const fireMat = this.glowMatFor(def?.explosionColor ?? 0xff8c2e);
     // Fireball burst.
     for (let i = 0; i < 26; i++) {
       const a = Math.random() * Math.PI * 2;
       const speed = 4 + Math.random() * 16;
-      this.emit(this.fireMat, x, y, Math.cos(a) * speed, Math.sin(a) * speed * 0.9 + 3, 0.45 + Math.random() * 0.3, 1.2 + Math.random() * r * 0.35, -10);
+      this.emit(fireMat, x, y, Math.cos(a) * speed, Math.sin(a) * speed * 0.9 + 3, 0.45 + Math.random() * 0.3, 1.2 + Math.random() * r * 0.35, -10);
     }
     // Smoke plume.
     for (let i = 0; i < 12; i++) {
@@ -98,7 +115,7 @@ export class Effects {
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.8, 1, 40),
       new THREE.MeshBasicMaterial({
-        color: 0xffc890,
+        color: def?.explosionColor ?? 0xffc890,
         transparent: true,
         opacity: 0.9,
         side: THREE.DoubleSide,
@@ -111,30 +128,34 @@ export class Effects {
     this.shockwaves.push({ mesh: ring, life: 0.4, maxLife: 0.4, maxR: r * 1.7 });
   }
 
-  spawnMuzzleFlash(x: number, y: number, angle: number): void {
+  spawnMuzzleFlash(x: number, y: number, angle: number, weapon = "cannon"): void {
+    const mat = this.glowMatFor(WEAPONS[weapon]?.color ?? 0xffd27a);
     for (let i = 0; i < 6; i++) {
       const spread = angle + (Math.random() - 0.5) * 0.5;
       const speed = 8 + Math.random() * 10;
-      this.emit(this.fireMat, x, y, Math.cos(spread) * speed, Math.sin(spread) * speed, 0.18 + Math.random() * 0.1, 0.8 + Math.random() * 0.6, 0);
+      this.emit(mat, x, y, Math.cos(spread) * speed, Math.sin(spread) * speed, 0.18 + Math.random() * 0.1, 0.8 + Math.random() * 0.6, 0);
     }
   }
 
-  /** Glowing projectile spheres + emitted trail particles. */
+  /** Glowing projectile spheres + emitted trail particles, colored per weapon. */
   syncProjectiles(projectiles: Map<string, ProjectileView>, dt: number): void {
     this.trailTimer -= dt;
     const emitTrail = this.trailTimer <= 0;
     if (emitTrail) this.trailTimer = 0.02;
 
     for (const [id, view] of projectiles) {
+      const def = WEAPONS[view.weapon];
+      const color = def?.color ?? 0xffd27a;
       let mesh = this.projectileMeshes.get(id);
       if (!mesh) {
-        mesh = new THREE.Mesh(this.projGeo, this.projMat);
+        mesh = new THREE.Mesh(this.projGeo, this.projMatFor(color));
+        mesh.scale.setScalar(def?.projectileRadius ?? 0.45);
         this.projectileMeshes.set(id, mesh);
         this.group.add(mesh);
       }
       mesh.position.set(view.x, view.y, 0.5);
       if (emitTrail) {
-        this.emit(this.trailMat, view.x, view.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 0.35, 0.9, 0);
+        this.emit(this.glowMatFor(color), view.x, view.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 0.35, 0.9, 0);
       }
     }
     for (const id of [...this.projectileMeshes.keys()]) {

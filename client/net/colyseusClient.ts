@@ -66,21 +66,29 @@ export class NetClient {
   ping = 0;
   /** Bumps on every server patch — drives client reconciliation. */
   serverVersion = 0;
+  /** True once a drop has been detected and a reconnect is pending. */
+  reconnecting = false;
 
   private snapshots: Snapshot[] = [];
   private pingTimer?: ReturnType<typeof setInterval>;
+  private reconnectName = "Player";
 
   async connect(name: string): Promise<void> {
+    this.reconnectName = name;
     const secure = location.protocol === "https:";
     const url = `${secure ? "wss" : "ws"}://${__SERVER_URL__}`;
     const client = new Client(url);
     this.room = await client.joinOrCreate("tankclash", { name });
     this.sessionId = this.room.sessionId;
     this.connected = true;
+    this.reconnecting = false;
 
     this.room.onStateChange(() => this.captureSnapshot());
-    this.room.onLeave(() => {
+    this.room.onLeave((code) => {
       this.connected = false;
+      // Abnormal close (server/network drop): auto-reconnect with a fresh join.
+      // Normal close (code 1000, e.g. headless teardown) does nothing.
+      if (code !== 1000) this.scheduleReconnect();
     });
     this.room.onError(() => {
       this.connected = false;
@@ -120,6 +128,19 @@ export class NetClient {
     }, 2000);
 
     this.captureSnapshot();
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnecting) return;
+    this.reconnecting = true;
+    if (this.pingTimer) clearInterval(this.pingTimer);
+    const attempt = () => {
+      this.connect(this.reconnectName).catch(() => {
+        // Retry until the server comes back.
+        setTimeout(attempt, 2000);
+      });
+    };
+    setTimeout(attempt, 1500);
   }
 
   sendInput(input: PlayerInput): void {

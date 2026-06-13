@@ -27,6 +27,10 @@ export interface WeaponDef {
   gravityScale: number;
   /** Shown in the weapon HUD and selectable with number keys. */
   selectable: boolean;
+  /** Projectile/trail color (client visual identity). */
+  color: number;
+  /** Explosion tint (client visual identity). */
+  explosionColor: number;
 
   // --- Behavior modifiers (absent = plain single projectile) ---
   /** Shotgun: fire this many projectiles in a spread cone. */
@@ -59,6 +63,8 @@ export const CANNON: WeaponDef = {
   windInfluence: 1,
   cooldown: 0.9,
   selfDamageScale: 0.6,
+  color: 0xffd27a,
+  explosionColor: 0xff8c2e,
 };
 
 export const MORTAR: WeaponDef = {
@@ -79,6 +85,8 @@ export const MORTAR: WeaponDef = {
   cooldown: 1.7,
   selfDamageScale: 0.7,
   gravityScale: 1.35,
+  color: 0xff6a3a,
+  explosionColor: 0xff4422,
 };
 
 export const SHOTGUN: WeaponDef = {
@@ -99,6 +107,8 @@ export const SHOTGUN: WeaponDef = {
   cooldown: 0.8,
   selfDamageScale: 0.5,
   gravityScale: 0.85,
+  color: 0xfff07a,
+  explosionColor: 0xffd24a,
   pellets: 6,
   spread: 0.22,
 };
@@ -121,6 +131,8 @@ export const CLUSTER: WeaponDef = {
   cooldown: 1.4,
   selfDamageScale: 0.6,
   gravityScale: 0.7,
+  color: 0x9d7bff,
+  explosionColor: 0xb86aff,
   splitOnImpact: { count: 5, weapon: "bomblet", speed: 18 },
 };
 
@@ -142,6 +154,8 @@ export const DRILL: WeaponDef = {
   cooldown: 1.5,
   selfDamageScale: 0.5,
   gravityScale: 0.15,
+  color: 0xff3df0,
+  explosionColor: 0xff3df0,
   pierce: 26,
   pierceRadius: 1.5,
 };
@@ -165,6 +179,8 @@ export const BOMBLET: WeaponDef = {
   selfDamageScale: 0.5,
   gravityScale: 1,
   selectable: false,
+  color: 0xffb24a,
+  explosionColor: 0xff8c2e,
 };
 
 export const WEAPONS: Record<string, WeaponDef> = {

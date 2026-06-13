@@ -135,12 +135,12 @@ async function boot() {
 
     // Events → effects/audio/hud.
     for (const fired of net.firedQueue.splice(0)) {
-      effects.spawnMuzzleFlash(fired.x, fired.y, fired.angle);
+      effects.spawnMuzzleFlash(fired.x, fired.y, fired.angle, fired.weapon);
       audio.fire(fired.power);
       if (fired.playerId === net.sessionId) followCam.shake(0.3 + fired.power * 0.4);
     }
     for (const explosion of net.explosionQueue.splice(0)) {
-      effects.spawnExplosion(explosion.x, explosion.y, explosion.r);
+      effects.spawnExplosion(explosion.x, explosion.y, explosion.r, explosion.weapon);
       audio.explosion(explosion.r);
       followCam.shake(0.9);
     }
@@ -200,6 +200,13 @@ async function boot() {
     hud.updateLabels(players, followCam.camera, net.sessionId);
     hud.updateScoreboard(players, input.scoreboardOpen);
     minimap.update(net.terrain, players, net.sessionId, terrainChanged || hadCraters);
+
+    // Reconnect banner overrides the waiting/empty overlay while a drop heals.
+    if (net.reconnecting) {
+      const overlay = document.getElementById("overlay-msg")!;
+      overlay.style.display = "block";
+      overlay.textContent = "CONNECTION LOST — RECONNECTING…";
+    }
 
     window.__tankclash = {
       connected: net.connected,

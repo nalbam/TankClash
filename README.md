@@ -6,10 +6,11 @@ physics-based cannon shots, reshaping the battlefield with craters, and fighting
 the wind — a 2.5D side-view slice rendered with Three.js over an authoritative
 Colyseus server.
 
-This is the Milestone 1 vertical slice: 1v1 (or player-vs-bot), one cannon, real
-craters, wind, knockback, win/loss, and round restart.
+It now spans Milestone 2: 1v1 (or player-vs-bot), **five weapons**, **four
+arena layouts**, a minimap, real craters and tunnels, wind, knockback,
+win/loss, round restart, and auto-reconnect.
 
-![TankClash](screenshots/match-t30s.png)
+![TankClash](screenshots/match-t10s.png)
 
 ## Requirements
 
@@ -69,10 +70,27 @@ SERVER_URL="game.example.com:2567" npm run build
 | `Shift` | dash |
 | Mouse | aim |
 | Left mouse | hold to charge, release to fire |
+| `1`–`5` | select weapon |
 | `Tab` | scoreboard |
 | `Enter` | restart (on the win screen) |
 
-The teal arc previews where your shot lands, accounting for charge and wind.
+The teal arc previews where your shot lands, accounting for the selected
+weapon, charge, and wind.
+
+## Weapons
+
+| # | Weapon | Role |
+| --- | --- | --- |
+| 1 | Cannon | balanced charge arc — the all-rounder |
+| 2 | Mortar | heavy high-arc lobber; big crater, drops behind cover |
+| 3 | Shotgun Shell | 6-pellet spread; brutal up close, scatters at range |
+| 4 | Cluster Rocket | flat rocket that bursts into bomblets — area denial |
+| 5 | Drill Missile | tunnels through terrain, then detonates — defeats cover |
+
+Each weapon has its own projectile/explosion color, cooldown, and terrain
+interaction. Arenas rotate each round between four layouts: rolling **hills**,
+a **plateau** with a central chasm, hollow **caverns**, and **islands** over
+deep gaps.
 
 ## Verification
 
@@ -147,12 +165,15 @@ Key constants live in `shared/constants.ts` and `shared/weapons.ts`:
 
 ## Known limitations
 
-- Milestone 1 scope: one weapon (cannon), 1v1 / player-vs-bot, single arena
-  generator. Milestones 2–3 (more weapons, 2v2, spectator, lobby) are not built.
+- Scope through Milestone 2: five weapons, 1v1 / player-vs-bot, four arenas.
+  Milestone 3 (8–10 weapons, 2v2, spectator, lobby, replays) is not built.
 - Prediction covers movement only; projectiles are server-spawned and shown via
   events, not locally predicted.
 - No rollback yet — the netcode is structured for it but does not implement it.
-- Bot aiming uses a closed-form ballistic solver with light wind compensation;
-  it is competent, not expert.
-- Headless screenshot FPS (~47) is measured under software WebGL (SwiftShader);
+- Drilling can leave visually floating terrain chunks (the solidity grid has no
+  connectivity/collapse pass); physics stays consistent since collision reads
+  the same grid.
+- Bot aiming uses a closed-form ballistic solver (now weapon-aware via
+  `gravityScale`) with light wind compensation; it is competent, not expert.
+- Headless screenshot FPS (~45) is measured under software WebGL (SwiftShader);
   real GPUs render the slice far faster.

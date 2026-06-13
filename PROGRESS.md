@@ -132,3 +132,26 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - visual polish 8 → 9 (distinct arena silhouettes)
 - Next target: per-weapon particle/visual identity and reconnect-aware
   connection status UI (polish loop).
+
+## Iteration 7 — 2026-06-13 (per-weapon visuals + reconnect)
+
+- Changed: gave each weapon a **distinct visual identity** — added `color` and
+  `explosionColor` to `WeaponDef` (cannon amber, mortar deep red, shotgun
+  yellow, cluster violet, drill magenta, bomblet orange). `Effects` now caches
+  materials per color and tints projectiles, trails, muzzle flashes, explosions,
+  and shockwave rings from the firing/explosion weapon; projectile mesh size
+  scales with `projectileRadius`. Added **auto-reconnect**: an abnormal room
+  leave (code ≠ 1000) schedules a fresh join with retry/backoff, and the client
+  shows a "CONNECTION LOST — RECONNECTING…" banner while it heals (normal
+  headless teardown at code 1000 is ignored, so the gate stays clean).
+- Gates: typecheck PASS | tests PASS (35/35) | bot match PASS | screenshots OK
+- Measurements:
+  - screenshot — `match-t10s.png` shows per-weapon explosion smoke and the full
+    HUD (minimap + weapon bar + both tanks); 44 fps avg headless
+  - match:sim unchanged (visuals are client-only); tick avg 0.009 ms
+- Rubric deltas:
+  - projectile readability 7 → 9 (each weapon's shell/trail/blast is color-coded)
+  - visual polish 9 → 10 (cohesive per-weapon palette, smoke, shockwaves)
+  - server stability 9 → 10 (reconnect handles drops gracefully)
+- Milestone 2 complete: 5 weapons, weapon selection, 4 arenas, minimap,
+  smarter bots, per-weapon visuals, reconnect. All gates green.

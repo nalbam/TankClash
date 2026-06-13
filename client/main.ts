@@ -38,12 +38,14 @@ async function boot() {
 
   const net = new NetClient();
   const params = new URLSearchParams(location.search);
-  const name = params.get("name") || `Pilot-${Math.floor(Math.random() * 900 + 100)}`;
 
-  window.__tankclash = { connected: false, players: 0, fps: 0, phase: "connecting" };
+  window.__tankclash = { connected: false, players: 0, fps: 0, phase: "menu" };
+
+  const choice = await showMenu(params);
+  window.__tankclash.phase = "connecting";
 
   try {
-    await net.connect(name);
+    await net.connect(choice.name, { mode: choice.mode, spectator: choice.spectator });
   } catch (err) {
     hud.setConnection(false, 0, 0);
     const overlay = document.getElementById("overlay-msg")!;
@@ -51,6 +53,12 @@ async function boot() {
     overlay.textContent = "CANNOT REACH SERVER — IS IT RUNNING ON :2567?";
     console.error("connection failed", err);
     return;
+  }
+
+  // Spectators control no tank — hide the player-only HUD.
+  if (net.spectator) {
+    document.getElementById("hud-status")!.style.display = "none";
+    document.getElementById("weapon-bar")!.style.display = "none";
   }
 
   let terrainRenderer = new TerrainRenderer(net.terrain);
@@ -84,37 +92,40 @@ async function boot() {
     for (const crater of net.craterQueue.splice(0)) terrainRenderer.onCrater(crater);
     terrainRenderer.update();
 
-    // Reconcile prediction against the latest authoritative server patch.
-    if (net.serverVersion !== reconciledVersion) {
-      reconciledVersion = net.serverVersion;
-      const auth = net.authoritative(net.sessionId);
-      if (auth) {
-        if (!auth.alive) predictor.active = false;
-        else if (!predictor.active) predictor.reset(auth);
-        else predictor.reconcile(auth, net.terrain);
+    // Players predict and send input; spectators just watch.
+    if (!net.spectator) {
+      // Reconcile prediction against the latest authoritative server patch.
+      if (net.serverVersion !== reconciledVersion) {
+        reconciledVersion = net.serverVersion;
+        const auth = net.authoritative(net.sessionId);
+        if (auth) {
+          if (!auth.alive) predictor.active = false;
+          else if (!predictor.active) predictor.reset(auth);
+          else predictor.reconcile(auth, net.terrain);
+        }
       }
-    }
 
-    // Aim from the predicted local position for zero-latency feel.
-    if (predictor.active) {
-      input.updateAim(followCam.camera, predictor.body.x, predictor.body.y);
-    }
+      // Aim from the predicted local position for zero-latency feel.
+      if (predictor.active) {
+        input.updateAim(followCam.camera, predictor.body.x, predictor.body.y);
+      }
 
-    // Sample input at a fixed cadence: send to server AND predict locally.
-    inputAccumulator += dt;
-    const sendInterval = 1 / INPUT_SEND_HZ;
-    while (inputAccumulator >= sendInterval) {
-      inputAccumulator -= sendInterval;
-      const sample = input.sample();
-      net.sendInput(sample);
-      predictor.applyInput(sample, net.terrain);
-    }
-    if (input.consumeRestart() && state?.phase === "ended") {
-      net.sendRestart();
-    }
-    const weaponPick = input.consumeWeaponSelect();
-    if (weaponPick !== null && SELECTABLE_WEAPONS[weaponPick]) {
-      net.sendSelectWeapon(SELECTABLE_WEAPONS[weaponPick].id);
+      // Sample input at a fixed cadence: send to server AND predict locally.
+      inputAccumulator += dt;
+      const sendInterval = 1 / INPUT_SEND_HZ;
+      while (inputAccumulator >= sendInterval) {
+        inputAccumulator -= sendInterval;
+        const sample = input.sample();
+        net.sendInput(sample);
+        predictor.applyInput(sample, net.terrain);
+      }
+      if (input.consumeRestart() && state?.phase === "ended") {
+        net.sendRestart();
+      }
+      const weaponPick = input.consumeWeaponSelect();
+      if (weaponPick !== null && SELECTABLE_WEAPONS[weaponPick]) {
+        net.sendSelectWeapon(SELECTABLE_WEAPONS[weaponPick].id);
+      }
     }
 
     const { players, projectiles } = net.interpolated();
@@ -221,6 +232,53 @@ async function boot() {
   }
 
   requestAnimationFrame(frame);
+}
+
+interface MenuChoice {
+  name: string;
+  mode: string;
+  spectator: boolean;
+}
+
+/**
+ * Lobby menu. Resolves on Play. URL params (?name=… or ?autostart) skip the
+ * menu and start immediately — used by the screenshot gate and shareable links.
+ */
+function showMenu(params: URLSearchParams): Promise<MenuChoice> {
+  const menu = document.getElementById("menu")!;
+  const toChoice = (name: string, mode: string): MenuChoice => ({
+    name,
+    mode: mode === "2v2" ? "2v2" : "1v1",
+    spectator: mode === "spectate",
+  });
+
+  if (params.has("name") || params.has("autostart")) {
+    menu.style.display = "none";
+    const fallback = `Pilot-${Math.floor(Math.random() * 900 + 100)}`;
+    return Promise.resolve(toChoice(params.get("name") || fallback, params.get("mode") || "1v1"));
+  }
+
+  return new Promise((resolve) => {
+    let mode = "1v1";
+    const buttons = [...menu.querySelectorAll<HTMLDivElement>(".mode-btn")];
+    for (const btn of buttons) {
+      btn.addEventListener("click", () => {
+        for (const b of buttons) b.classList.remove("active");
+        btn.classList.add("active");
+        mode = btn.dataset.mode ?? "1v1";
+      });
+    }
+    const nameInput = document.getElementById("menu-name") as HTMLInputElement;
+    const play = () => {
+      menu.style.display = "none";
+      const name = nameInput.value.trim() || `Pilot-${Math.floor(Math.random() * 900 + 100)}`;
+      resolve(toChoice(name, mode));
+    };
+    document.getElementById("play-btn")!.addEventListener("click", play);
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") play();
+    });
+  });
 }
 
 boot();

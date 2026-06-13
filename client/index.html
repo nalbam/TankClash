@@ -103,6 +103,34 @@
       }
 
       #overlay-msg { top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 20px; letter-spacing: 0.1em; }
+
+      #menu {
+        position: absolute; inset: 0; z-index: 10;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 18px; background: radial-gradient(circle at 50% 40%, #16234a, #070b1d 80%);
+      }
+      #menu h1 { font-size: 64px; letter-spacing: 0.08em; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+      #menu .tagline { color: var(--teal); letter-spacing: 0.2em; font-size: 13px; margin-top: -10px; }
+      #menu input {
+        margin-top: 10px; padding: 10px 14px; width: 260px; text-align: center;
+        background: rgba(11,18,38,0.8); border: 1px solid rgba(45,212,191,0.4);
+        border-radius: 8px; color: var(--cream); font-size: 15px;
+      }
+      #menu .modes { display: flex; gap: 10px; margin-top: 6px; }
+      .mode-btn {
+        padding: 12px 18px; border-radius: 10px; cursor: pointer;
+        background: rgba(255,255,255,0.05); border: 1px solid transparent;
+        color: rgba(241,233,210,0.75); font-size: 14px; text-align: center; min-width: 120px;
+      }
+      .mode-btn .sub { display: block; font-size: 11px; color: rgba(241,233,210,0.45); margin-top: 3px; }
+      .mode-btn.active { background: rgba(45,212,191,0.16); border-color: var(--teal); color: var(--cream); }
+      #play-btn {
+        margin-top: 12px; padding: 14px 48px; border-radius: 10px; cursor: pointer;
+        background: var(--teal); color: #06231f; font-weight: 700; font-size: 18px;
+        letter-spacing: 0.1em; border: none;
+      }
+      #play-btn:hover { filter: brightness(1.1); }
+      #menu .hint { color: rgba(241,233,210,0.4); font-size: 12px; margin-top: 4px; }
     </style>
   </head>
   <body>
@@ -157,6 +185,19 @@
       </div>
 
       <div id="overlay-msg" class="hud panel" style="display:none"></div>
+    </div>
+
+    <div id="menu">
+      <h1>TankClash ⚔️</h1>
+      <div class="tagline">REAL-TIME ARTILLERY COMBAT</div>
+      <input id="menu-name" type="text" maxlength="16" placeholder="Call sign" />
+      <div class="modes">
+        <div class="mode-btn active" data-mode="1v1">1v1<span class="sub">vs Bot</span></div>
+        <div class="mode-btn" data-mode="2v2">2v2<span class="sub">teams of two</span></div>
+        <div class="mode-btn" data-mode="spectate">Spectate<span class="sub">watch bots</span></div>
+      </div>
+      <button id="play-btn">PLAY</button>
+      <div class="hint">A/D move · Space jump · Shift dash · Mouse aim · Hold LMB to charge · 1–0 weapons</div>
     </div>
     <script type="module" src="/main.ts"></script>
   </body>

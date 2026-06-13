@@ -6,11 +6,13 @@ physics-based cannon shots, reshaping the battlefield with craters, and fighting
 the wind — a 2.5D side-view slice rendered with Three.js over an authoritative
 Colyseus server.
 
-It now spans Milestone 2: 1v1 (or player-vs-bot), **five weapons**, **four
-arena layouts**, a minimap, real craters and tunnels, wind, knockback,
-win/loss, round restart, and auto-reconnect.
+It spans Milestone 3: a lobby with **1v1 / 2v2 / spectator** modes, **ten
+weapons**, **four arena layouts**, a minimap, real craters and tunnels, wind,
+knockback, status effects (shield/burn), round summaries, win/loss, round
+restart, and auto-reconnect.
 
-![TankClash](screenshots/match-t10s.png)
+![TankClash](screenshots/menu.png)
+![TankClash](screenshots/spectate.png)
 
 ## Requirements
 
@@ -86,11 +88,25 @@ weapon, charge, and wind.
 | 3 | Shotgun Shell | 6-pellet spread; brutal up close, scatters at range |
 | 4 | Cluster Rocket | flat rocket that bursts into bomblets — area denial |
 | 5 | Drill Missile | tunnels through terrain, then detonates — defeats cover |
+| 6 | Railgun | hyper-velocity flat shot; near-instant, big direct hit |
+| 7 | Gravity Bomb | implodes — pulls victims inward toward hazards |
+| 8 | Napalm | low burst, strong burn damage-over-time |
+| 9 | Shield Grenade | team support: shields allies in the burst |
+| 0 | Repair Foam | team support: heals allies in the burst |
 
 Each weapon has its own projectile/explosion color, cooldown, and terrain
 interaction. Arenas rotate each round between four layouts: rolling **hills**,
 a **plateau** with a central chasm, hollow **caverns**, and **islands** over
-deep gaps.
+deep gaps. Shield and burn are status effects (shield reduces incoming damage;
+burn ticks damage over time).
+
+## Modes
+
+Pick from the lobby menu (or pass `?mode=2v2` / `?mode=spectate` in the URL):
+
+- **1v1** — you versus a bot
+- **2v2** — teams of two (bots fill empty slots)
+- **Spectate** — watch a bot match with a free action camera, no tank
 
 ## Verification
 
@@ -165,8 +181,9 @@ Key constants live in `shared/constants.ts` and `shared/weapons.ts`:
 
 ## Known limitations
 
-- Scope through Milestone 2: five weapons, 1v1 / player-vs-bot, four arenas.
-  Milestone 3 (8–10 weapons, 2v2, spectator, lobby, replays) is not built.
+- Scope through Milestone 3 core: ten weapons, 1v1 / 2v2 / spectator, lobby,
+  round summary. Two peripheral M3 items are not built: **gamepad support** and
+  **replay recording** (the latter is optional in the spec).
 - Prediction covers movement only; projectiles are server-spawned and shown via
   events, not locally predicted.
 - No rollback yet — the netcode is structured for it but does not implement it.

@@ -49,9 +49,13 @@ export class TankClashRoom extends Room<GameState> {
     });
   }
 
-  onJoin(client: Client, options: { name?: string } = {}) {
-    const name = typeof options.name === "string" && options.name.trim() ? options.name.trim().slice(0, 16) : "Player";
-    this.sim.addPlayer(client.sessionId, name, false);
+  onJoin(client: Client, options: { name?: string; spectator?: boolean } = {}) {
+    // Spectators receive synchronized state but control no tank.
+    if (!options.spectator) {
+      const name =
+        typeof options.name === "string" && options.name.trim() ? options.name.trim().slice(0, 16) : "Player";
+      this.sim.addPlayer(client.sessionId, name, false);
+    }
     this.fillBots();
     const init: TerrainInit = { seed: this.sim.state.terrainSeed, craters: this.sim.craters };
     client.send(MSG.TERRAIN_INIT, init);

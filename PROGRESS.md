@@ -207,3 +207,26 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - match:sim (1v1 regression) and screenshot gate both green
 - Rubric deltas: no regressions; 2v2 broadens match variety (replayability holds at 10).
 - Next target: spectator mode + lobby/menu for choosing 1v1 vs 2v2.
+
+## Iteration 10 — 2026-06-13 (lobby + spectator)
+
+- Changed: added a **lobby menu** (title, call-sign input, mode buttons for
+  1v1 / 2v2 / Spectate, Play) shown before connecting; URL params (`?name=` or
+  `?autostart`) skip it so the screenshot gate and shareable links start
+  immediately. Added **spectator mode**: spectators join without a tank
+  (`onJoin` skips `addPlayer` when `spectator` is set), receive synchronized
+  state, watch the action camera, and have the player-only HUD hidden. The chosen
+  mode/name/spectator flag flows through `NetClient.connect` and is preserved
+  across auto-reconnect.
+- Gates: typecheck PASS | tests PASS (45/45) | bot match PASS | screenshots OK
+- Measurements:
+  - manual capture verified: `screenshots/menu.png` (lobby) and
+    `screenshots/spectate.png` (spectator watching BOT Rusty vs BOT Boltz, no
+    player HUD, action camera tracking) — spectator reported connected, 2 bots,
+    phase playing
+  - 1v1 autostart screenshot + match:sim regression both green
+- Rubric deltas:
+  - UI readability 9 → 10 (proper entry menu; spectator HUD declutters correctly)
+- Milestone 3 core complete: ten weapons, 2v2, spectator, lobby, round summary,
+  per-weapon visuals. Not built: gamepad support and replay recording (the two
+  optional/peripheral M3 items) — see Known Limitations.

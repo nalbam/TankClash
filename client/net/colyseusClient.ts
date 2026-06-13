@@ -71,16 +71,22 @@ export class NetClient {
   /** True once a drop has been detected and a reconnect is pending. */
   reconnecting = false;
 
+  /** True when this client joined to watch, not play. */
+  spectator = false;
+
   private snapshots: Snapshot[] = [];
   private pingTimer?: ReturnType<typeof setInterval>;
   private reconnectName = "Player";
+  private joinOpts: { mode?: string; spectator?: boolean } = {};
 
-  async connect(name: string): Promise<void> {
+  async connect(name: string, opts: { mode?: string; spectator?: boolean } = {}): Promise<void> {
     this.reconnectName = name;
+    this.joinOpts = opts;
+    this.spectator = opts.spectator === true;
     const secure = location.protocol === "https:";
     const url = `${secure ? "wss" : "ws"}://${__SERVER_URL__}`;
     const client = new Client(url);
-    this.room = await client.joinOrCreate("tankclash", { name });
+    this.room = await client.joinOrCreate("tankclash", { name, ...opts });
     this.sessionId = this.room.sessionId;
     this.connected = true;
     this.reconnecting = false;
@@ -137,7 +143,7 @@ export class NetClient {
     this.reconnecting = true;
     if (this.pingTimer) clearInterval(this.pingTimer);
     const attempt = () => {
-      this.connect(this.reconnectName).catch(() => {
+      this.connect(this.reconnectName, this.joinOpts).catch(() => {
         // Retry until the server comes back.
         setTimeout(attempt, 2000);
       });

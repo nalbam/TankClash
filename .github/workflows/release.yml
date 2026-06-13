@@ -48,6 +48,7 @@ jobs:
           cache: 'npm'
 
       - name: Update package.json version
+        if: steps.meta.outputs.version != 'dev'
         run: |
           VERSION=${{ steps.meta.outputs.version }}
           echo "Updating package.json version to $VERSION"
@@ -125,6 +126,7 @@ jobs:
         run: npm ci
 
       - name: Update package.json version
+        if: steps.version.outputs.version != 'dev'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           echo "Updating package.json version to $VERSION"

@@ -26,6 +26,20 @@ Do not build a fake local-only prototype that cannot evolve into online multipla
 
 ---
 
+## Repository Constraints
+
+This repository already has CI/CD assets. Respect them — do not restructure around them:
+
+* Single `package.json` at the repo root. `Dockerfile` and `.github/workflows/release.yml` assume this. No monorepo workspaces.
+* `npm run build` must output the client bundle to `public/` — the GitHub Pages deploy uploads `./public`.
+* Node.js 22.
+* Server listens on port 2567. Client dev server runs on port 8080. (Matches `.env.example`.)
+* The client reads the server address from `SERVER_URL` at build time.
+* Keep `.env.example` accurate — it currently says "webpack"; correct it to Vite when wiring the build.
+* Commit messages follow `<type>: <description>` (`feat`, `fix`, `refactor`, `docs`, `test`, `chore`).
+
+---
+
 ## Core Game Identity
 
 TankClash should feel like:
@@ -203,6 +217,8 @@ Include:
 ## Terrain System
 
 Terrain is the heart of TankClash.
+
+The terrain representation is fixed: use a destructible 2D solidity grid (bitmap or SDF) as the authoritative server-side structure, and generate the render mesh from it (marching squares or equivalent). Do not use a heightmap — tunnels and overhangs are required and a heightmap cannot represent them. Do not revisit this decision mid-milestone.
 
 Implement destructible terrain that supports:
 
@@ -422,6 +438,13 @@ Implement:
 * latency display
 * reconnect-safe state handling where practical
 
+Fixed numbers — do not re-debate these each loop:
+
+* server simulation: fixed timestep at 30 Hz
+* state snapshots/patches to clients: 20 Hz
+* client interpolation buffer: 100 ms
+* terrain destruction: synchronized as events (crater center + radius), not full grid sync
+
 Do not over-engineer rollback yet.
 
 Build clean foundations for it.
@@ -454,42 +477,78 @@ Each loop must:
 
 1. choose the highest-impact missing or weak feature
 2. implement it
-3. run the client and server
-4. create or join a Colyseus room
-5. test a playable match
-6. capture screenshots or short gameplay recording
-7. evaluate against the rubric
-8. write findings to `PROGRESS.md`
-9. fix the weakest issue
-10. commit the result
+3. run the verification harness (below) — all gates must pass
+4. capture screenshots via `npm run screenshot`
+5. score the rubric and write findings to `PROGRESS.md`
+6. fix the weakest issue
+7. commit the result (`<type>: <description>`)
 
 Do not ask what to do next.
 
 Do not stop after the first working version.
 
-Do not expand scope before the current milestone feels good.
+Do not expand scope before the current milestone passes all gates.
+
+Loop budget: at most 15 loops for Milestone 1. If gates still fail after 15 loops, stop, record every unresolved issue under "Known Limitations" in `PROGRESS.md`, and create the final commit anyway.
+
+### PROGRESS.md format
+
+Append one entry per loop:
+
+```
+## Iteration N — <date>
+- Changed: <what was implemented or fixed>
+- Gates: typecheck PASS/FAIL | tests PASS/FAIL | bot match PASS/FAIL | screenshots OK/FAIL
+- Measurements: <fps, tick stability, match duration, sync error — actual numbers>
+- Rubric deltas: <only categories that changed, with reason>
+- Next target: <single highest-impact issue>
+```
+
+---
+
+## Verification Harness
+
+Self-scoring is not verification. Every loop must pass these objective gates, in order:
+
+1. **Typecheck** — `npm run typecheck` passes with zero errors.
+2. **Unit tests** — `npm test` (Vitest). Cover at minimum: projectile physics (gravity, wind, collision), terrain destruction (crater carving, mesh regeneration), damage resolution (splash falloff, direct-hit bonus, knockback).
+3. **Headless bot match** — `npm run match:sim` runs the server with two bots and asserts:
+   * the match runs to completion and a winner is declared
+   * no crash, no unhandled rejection
+   * no NaN/Infinity in any position, velocity, or health value
+   * terrain destruction events are applied consistently
+   * server tick duration stays under budget (no death spiral)
+4. **Screenshots** — `npm run screenshot` launches server + client headlessly (Playwright), joins a room with a bot, and captures screenshots at fixed times (e.g. t=2s, t=10s, t=30s). Screenshots must show a rendered battlefield, never a blank or black canvas.
+
+Build these four scripts in the very first loop, before gameplay features. They are the foundation that makes every later loop verifiable.
+
+A loop that does not pass all gates may not move on to new features — fix the gate first.
 
 ---
 
 ## Evaluation Rubric
 
-After every iteration, score from 1 to 10:
+The verification harness gates are primary. The rubric is a secondary, directional instrument for choosing what to improve next — not proof that something works.
+
+Measurable categories — score from evidence and record the actual numbers:
+
+* performance — measured FPS during the screenshot run (target: 60)
+* server stability — consecutive headless bot matches complete without crash
+* multiplayer synchronization — measured position error between server state and interpolated client state
+* latency tolerance — playable with 100 ms artificial delay added
+
+Judgment categories — score 1 to 10 from screenshots and test output. Justify every score in `PROGRESS.md` with concrete evidence (a screenshot detail, a measurement, a test result). A score without evidence is invalid:
 
 * real-time movement feel
 * aiming and firing feel
-* multiplayer synchronization
 * projectile readability
 * terrain destruction quality
 * combat clarity
 * visual polish
 * UI readability
 * bot usefulness
-* server stability
-* latency tolerance
-* performance
-* replayability
 
-Any score below 8 requires another iteration.
+Any judgment score below 8 requires another iteration (within the loop budget).
 
 Fix the lowest-scoring category first.
 
@@ -559,7 +618,6 @@ After Milestone 1 feels good, add:
 * better bot behavior
 * multiple arena layouts
 * improved camera
-* procedural audio
 * connection status UI
 
 ---
@@ -573,29 +631,29 @@ After Milestone 2 feels good, add:
 * spectator mode
 * match lobby
 * round summary
-* replay recording foundation
+* procedural audio
 * sudden death
 * gamepad support
 * better menus
+* replay recording foundation (optional — only if everything else is at target)
 
 ---
 
 ## Stopping Condition
 
-Stop only when all are true:
+Stop when all are true:
 
 * Milestone 1 is complete
-* client and server run successfully
-* at least one multiplayer or bot match is playable from start to finish
+* all four verification harness gates pass
+* the headless bot match completes with a winner, repeatedly
 * the player can win or lose
-* terrain destruction affects tactics
-* cannon combat feels satisfying
-* networking is stable enough for local testing
-* every rubric category is at least 8/10
+* terrain destruction affects tactics (verifiable: a crater changes a bot's path or blocks a shot in the simulated match)
+* every measurable rubric category meets its target
+* every judgment rubric category is at least 8/10 with recorded evidence
 * `PROGRESS.md` contains full iteration history
 * final commit is created
 
-If these are not true, continue the loop.
+Or stop when the loop budget (15 loops) is exhausted — in that case, record all unmet criteria under "Known Limitations" in `PROGRESS.md` and create the final commit anyway.
 
 ---
 

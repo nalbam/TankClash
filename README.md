@@ -14,6 +14,11 @@ restart, and auto-reconnect.
 ![TankClash](screenshots/menu.png)
 ![TankClash](screenshots/spectate.png)
 
+Full documentation lives in [`docs/`](docs/README.md): [getting
+started](docs/getting-started.md), [architecture](docs/architecture.md),
+[networking](docs/networking.md), [gameplay & tuning](docs/gameplay.md), and
+[verification](docs/verification.md).
+
 ## Requirements
 
 - Node.js 22+

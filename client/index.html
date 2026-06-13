@@ -40,6 +40,10 @@
       #wind-arrow { font-size: 18px; color: var(--teal); min-width: 70px; letter-spacing: -2px; }
       #round-timer { font-size: 20px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
 
+      #minimap-wrap { top: 64px; right: 12px; padding: 6px; }
+      #minimap-wrap .mm-label { font-size: 10px; letter-spacing: 0.15em; color: rgba(241,233,210,0.55); margin-bottom: 4px; }
+      #minimap { display: block; border-radius: 4px; image-rendering: pixelated; width: 200px; height: 75px; }
+
       #hud-net { top: 12px; right: 12px; text-align: right; font-size: 12px; }
       #conn-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #888; margin-right: 6px; }
       #conn-dot.ok { background: #38e07b; }
@@ -119,6 +123,11 @@
           <span id="wind-value">0.0</span>
         </div>
         <div id="round-timer">0:00</div>
+      </div>
+
+      <div id="minimap-wrap" class="hud panel">
+        <div class="mm-label">ARENA</div>
+        <canvas id="minimap" width="160" height="60"></canvas>
       </div>
 
       <div id="hud-net" class="hud panel">

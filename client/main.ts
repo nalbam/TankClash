@@ -11,6 +11,7 @@ import { TerrainRenderer } from "./render/terrainRenderer";
 import { TrajectoryPreview } from "./render/trajectory";
 import { VehicleRenderer } from "./render/vehicleRenderer";
 import { Hud } from "./ui/hud";
+import { Minimap } from "./ui/minimap";
 
 const INPUT_SEND_HZ = 30;
 
@@ -56,6 +57,9 @@ async function boot() {
   scene.add(terrainRenderer.group);
   let seenTerrainVersion = net.terrainVersion;
 
+  const minimap = new Minimap();
+  minimap.rebuild(net.terrain);
+
   const predictor = new LocalPredictor();
   let reconciledVersion = net.serverVersion;
   let lastTime = performance.now();
@@ -71,10 +75,12 @@ async function boot() {
     const state = net.state;
 
     // Terrain: full rebuilds on new rounds, incremental on craters.
-    if (net.terrainVersion !== seenTerrainVersion) {
+    const terrainChanged = net.terrainVersion !== seenTerrainVersion;
+    if (terrainChanged) {
       seenTerrainVersion = net.terrainVersion;
       terrainRenderer.rebuildAll(net.terrain);
     }
+    const hadCraters = net.craterQueue.length > 0;
     for (const crater of net.craterQueue.splice(0)) terrainRenderer.onCrater(crater);
     terrainRenderer.update();
 
@@ -193,6 +199,7 @@ async function boot() {
     }
     hud.updateLabels(players, followCam.camera, net.sessionId);
     hud.updateScoreboard(players, input.scoreboardOpen);
+    minimap.update(net.terrain, players, net.sessionId, terrainChanged || hadCraters);
 
     window.__tankclash = {
       connected: net.connected,

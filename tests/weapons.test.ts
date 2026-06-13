@@ -3,6 +3,10 @@ import { GRID_W } from "../shared/constants";
 import { TerrainGrid } from "../shared/terrain";
 import { CLUSTER, DRILL, SELECTABLE_WEAPONS, SHOTGUN, WEAPONS } from "../shared/weapons";
 import { GameSim } from "../server/GameSim";
+import { GameState } from "../server/schema/GameState";
+import { PlayerState } from "../server/schema/PlayerState";
+import { createSimEvents } from "../server/simEvents";
+import { stepWeapon } from "../server/systems/weaponSystem";
 
 function flatColumnTerrain(): TerrainGrid {
   // A vertical wall column near x=120 so we can test drilling/cover.
@@ -36,9 +40,9 @@ describe("weapon catalog", () => {
 });
 
 describe("weapon firing in the simulation", () => {
-  function fire(weapon: string, aimAngle: number) {
+  function fire(weapon: string, aimAngle: number, terrain: TerrainGrid = flatColumnTerrain()) {
     const sim = new GameSim(123);
-    sim.terrain = flatColumnTerrain();
+    sim.terrain = terrain;
     const a = sim.addPlayer("a", "A", false);
     sim.addPlayer("b", "B", false); // makes phase=playing on reset
     // Force a clean playing state with both tanks placed.
@@ -55,13 +59,28 @@ describe("weapon firing in the simulation", () => {
     return sim;
   }
 
-  it("shotgun spawns multiple pellets in one shot", () => {
-    const sim = fire("shotgun", 0.6);
+  it("shotgun spawns one pellet per pellet count on release", () => {
+    // Unit-test the firing step directly so projectile integration can't cull
+    // pellets before we count them.
+    const state = new GameState();
+    const events = createSimEvents();
+    const p = new PlayerState();
+    p.weapon = "shotgun";
+    p.alive = true;
+    p.x = 60;
+    p.y = 40;
+    p.charging = true;
+    p.charge = 1;
+    p.input = { seq: 1, left: false, right: false, jump: false, dash: false, aimAngle: 0.5, charging: false };
+    let n = 0;
+    stepWeapon(state, events, "a", p, () => `p${n++}`, 0.016);
+
     let pellets = 0;
-    sim.state.projectiles.forEach((p) => {
-      if (p.weapon === "shotgun") pellets++;
+    state.projectiles.forEach((pr) => {
+      if (pr.weapon === "shotgun") pellets++;
     });
     expect(pellets).toBe(SHOTGUN.pellets);
+    expect(events.fired).toHaveLength(1); // one shot event, not one per pellet
   });
 
   it("cluster rocket splits into bomblets on impact", () => {

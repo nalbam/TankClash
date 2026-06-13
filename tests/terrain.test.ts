@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CELL_SIZE, GRID_H, GRID_W } from "../shared/constants";
-import { TerrainGrid } from "../shared/terrain";
+import { CELL_SIZE, GRID_H, GRID_W, WORLD_WIDTH } from "../shared/constants";
+import { ARENA_LAYOUTS, layoutForSeed, TerrainGrid } from "../shared/terrain";
 
 describe("TerrainGrid", () => {
   it("generates identical terrain for the same seed (client/server determinism)", () => {
@@ -54,5 +54,32 @@ describe("TerrainGrid", () => {
     const surface = g.surfaceY(x);
     expect(g.solidAtWorld(x, surface - CELL_SIZE / 2)).toBe(true);
     expect(g.solidAtWorld(x, surface + CELL_SIZE / 2)).toBe(false);
+  });
+});
+
+describe("arena layouts", () => {
+  it("chooses a layout deterministically from the seed", () => {
+    expect(layoutForSeed(12345)).toBe(layoutForSeed(12345));
+    expect(ARENA_LAYOUTS).toContain(layoutForSeed(777));
+  });
+
+  it("generates every layout with playable ground and spawn footing", () => {
+    // Seeds chosen so (seed >>> 8) % 4 covers all four layouts.
+    const seedFor = (idx: number) => (idx << 8) | 0x11;
+    const spawnL = WORLD_WIDTH * 0.18;
+    const spawnR = WORLD_WIDTH * 0.82;
+    for (let i = 0; i < ARENA_LAYOUTS.length; i++) {
+      const seed = seedFor(i);
+      const g = TerrainGrid.generate(seed);
+      expect(layoutForSeed(seed)).toBe(ARENA_LAYOUTS[i]);
+
+      const ratio = g.solidCount() / (GRID_W * GRID_H);
+      expect(ratio).toBeGreaterThan(0.08);
+      expect(ratio).toBeLessThan(0.8);
+
+      // Both spawn columns must have ground to stand on.
+      expect(g.surfaceY(spawnL)).toBeGreaterThan(2);
+      expect(g.surfaceY(spawnR)).toBeGreaterThan(2);
+    }
   });
 });

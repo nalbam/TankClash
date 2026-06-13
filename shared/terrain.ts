@@ -1,5 +1,17 @@
-import { CELL_SIZE, GRID_H, GRID_W, WORLD_HEIGHT } from "./constants";
+import { CELL_SIZE, GRID_H, GRID_W, WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import { createFbm1D, createRng } from "./math";
+
+export const ARENA_LAYOUTS = ["hills", "plateau", "caverns", "islands"] as const;
+export type ArenaLayout = (typeof ARENA_LAYOUTS)[number];
+
+/** Deterministic layout choice from the seed — same on client and server. */
+export function layoutForSeed(seed: number): ArenaLayout {
+  return ARENA_LAYOUTS[(seed >>> 8) % ARENA_LAYOUTS.length];
+}
+
+// Spawn columns (matches GameSim spawn at 18% / 82% of world width).
+const SPAWN_LX = Math.floor(WORLD_WIDTH * 0.18);
+const SPAWN_RX = Math.floor(WORLD_WIDTH * 0.82);
 
 /**
  * Destructible 2D solidity grid — the authoritative terrain representation.
@@ -18,33 +30,90 @@ export class TerrainGrid {
 
   static generate(seed: number): TerrainGrid {
     const grid = new TerrainGrid();
+    const layout = layoutForSeed(seed);
     const fbm = createFbm1D(seed, 4);
     const rng = createRng(seed ^ 0x5eed);
 
-    // Surface profile: rolling hills between ~22% and ~55% of world height.
-    const heights: number[] = [];
-    for (let cx = 0; cx < GRID_W; cx++) {
-      const n = fbm(cx * 0.015);
-      const hWorld = WORLD_HEIGHT * (0.22 + n * 0.33);
-      heights.push(Math.round(hWorld / CELL_SIZE));
-    }
+    // Each layout produces a surface-height profile (cells of solid ground per
+    // column). The fill + cover-pocket carving is shared.
+    const heights = TerrainGrid.heightProfile(layout, fbm, rng);
 
     for (let cx = 0; cx < GRID_W; cx++) {
-      const top = heights[cx];
-      for (let cy = 0; cy < top && cy < GRID_H; cy++) {
+      const top = Math.min(GRID_H, Math.max(0, heights[cx]));
+      for (let cy = 0; cy < top; cy++) {
         grid.cells[cy * GRID_W + cx] = 1;
       }
     }
 
-    // A few pre-carved pockets so the arena starts with cover variety.
-    const pockets = 3 + Math.floor(rng() * 3);
+    // Caverns get many hollows; other layouts a few cover pockets.
+    const pockets = layout === "caverns" ? 10 + Math.floor(rng() * 6) : 3 + Math.floor(rng() * 3);
     for (let i = 0; i < pockets; i++) {
-      const wx = (0.1 + rng() * 0.8) * GRID_W * CELL_SIZE;
-      const wy = heights[Math.floor(wx / CELL_SIZE)] * CELL_SIZE * (0.4 + rng() * 0.5);
-      grid.carveCircle(wx, wy, 3 + rng() * 4);
+      const cx = Math.floor((0.1 + rng() * 0.8) * GRID_W);
+      const surface = heights[cx] * CELL_SIZE;
+      const wy = surface * (0.35 + rng() * 0.55);
+      grid.carveCircle(cx * CELL_SIZE, wy, 3 + rng() * 4);
     }
 
     return grid;
+  }
+
+  /** Column heights (in cells) for a layout. Always leaves footing at spawns. */
+  private static heightProfile(
+    layout: ArenaLayout,
+    fbm: (x: number) => number,
+    rng: () => number,
+  ): number[] {
+    const heights = new Array<number>(GRID_W);
+    const base = WORLD_HEIGHT / CELL_SIZE;
+
+    for (let cx = 0; cx < GRID_W; cx++) {
+      const n = fbm(cx * 0.015);
+      let h: number;
+      switch (layout) {
+        case "plateau": {
+          // High flat mesa with a deep central chasm.
+          const flat = 0.5 + n * 0.06;
+          const center = Math.abs(cx / GRID_W - 0.5);
+          const chasm = center < 0.12 ? 1 - (0.12 - center) / 0.12 : 1;
+          h = base * flat * (0.25 + 0.75 * chasm);
+          break;
+        }
+        case "caverns": {
+          // Thick massif (hollowed out by extra pockets afterward).
+          h = base * (0.62 + n * 0.22);
+          break;
+        }
+        case "islands": {
+          // Three peaks (two at the spawns) separated by deep gaps.
+          const peaks = [SPAWN_LX, Math.floor(GRID_W / 2), SPAWN_RX];
+          let peak = 0;
+          for (const px of peaks) {
+            const d = Math.abs(cx - px) / (GRID_W * 0.12);
+            peak = Math.max(peak, Math.exp(-d * d));
+          }
+          h = base * (0.12 + 0.42 * peak + n * 0.05);
+          break;
+        }
+        case "hills":
+        default:
+          h = base * (0.22 + n * 0.33);
+          break;
+      }
+      heights[cx] = Math.round(h);
+    }
+
+    // Guarantee a flat landing pad at each spawn column.
+    TerrainGrid.flattenAround(heights, SPAWN_LX);
+    TerrainGrid.flattenAround(heights, SPAWN_RX);
+    return heights;
+  }
+
+  private static flattenAround(heights: number[], cx: number, radius = 6): void {
+    const target = Math.max(heights[cx], Math.round((WORLD_HEIGHT / CELL_SIZE) * 0.2));
+    for (let i = -radius; i <= radius; i++) {
+      const x = cx + i;
+      if (x >= 0 && x < heights.length) heights[x] = target;
+    }
   }
 
   inBounds(cx: number, cy: number): boolean {

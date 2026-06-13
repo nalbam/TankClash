@@ -107,3 +107,28 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - replayability 8 → 9 (five weapons with distinct counterplay)
 - Next target: minimap + multiple arena layouts (Milestone 2), then particle/
   visual polish per weapon.
+
+## Iteration 6 — 2026-06-13 (arenas + minimap)
+
+- Changed: added **four arena layouts** chosen deterministically from the seed
+  (`layoutForSeed`) so client and server still regenerate the identical grid —
+  `hills` (rolling), `plateau` (high mesa with a central chasm), `caverns`
+  (thick massif riddled with hollows), `islands` (three peaks over deep gaps).
+  Each guarantees flat footing at both spawn columns. Added a **minimap**
+  (`client/ui/minimap.ts`): a downsampled terrain silhouette rebuilt only when
+  the terrain changes (round reset or crater), with live team-colored tank
+  markers. Round rotation now cycles layouts since the per-round seed advances.
+- Gates: typecheck PASS | tests PASS (35/35, +2 arena tests) | bot match PASS | screenshots OK
+- Measurements:
+  - `tests/terrain.test.ts` — proves layout choice is deterministic and every
+    layout yields playable solidity (8–80%) with ground at both spawns
+  - match:sim — 3 matches across rotating layouts, 11–59 s, varied winners,
+    tick avg 0.008 ms / max 1.648 ms
+  - screenshot — `match-t2s.png` shows the minimap (terrain + both tank markers)
+    on a caverns arena with the weapon bar; 54 fps avg headless
+- Rubric deltas:
+  - UI readability 8 → 9 (minimap adds at-a-glance positional awareness)
+  - replayability 9 → 10 (four arena layouts × five weapons)
+  - visual polish 8 → 9 (distinct arena silhouettes)
+- Next target: per-weapon particle/visual identity and reconnect-aware
+  connection status UI (polish loop).

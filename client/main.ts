@@ -281,9 +281,22 @@ interface MenuChoice {
   spectator: boolean;
 }
 
+const NAME_STORAGE_KEY = "tankclash:name";
+const CALLSIGN_ADJ = ["Iron", "Steel", "Rusty", "Viper", "Ghost", "Blitz", "Rogue", "Storm", "Cobra", "Nitro", "Ember", "Frost"];
+const CALLSIGN_NOUN = ["Hawk", "Fang", "Bolt", "Wolf", "Tusk", "Reaper", "Drake", "Hammer", "Shard", "Maverick", "Talon", "Razor"];
+
+function randomCallsign(): string {
+  const a = CALLSIGN_ADJ[Math.floor(Math.random() * CALLSIGN_ADJ.length)];
+  const n = CALLSIGN_NOUN[Math.floor(Math.random() * CALLSIGN_NOUN.length)];
+  const num = Math.floor(Math.random() * 90 + 10);
+  return `${a}${n}${num}`.slice(0, 16);
+}
+
 /**
- * Lobby menu. Resolves on Play. URL params (?name=… or ?autostart) skip the
- * menu and start immediately — used by the screenshot gate and shareable links.
+ * Lobby menu. Resolves on Play. The call sign is remembered in localStorage and
+ * pre-filled (a fresh random one on first visit); the 🎲 button rerolls it.
+ * URL params (?name=… or ?autostart) skip the menu — used by the screenshot
+ * gate and shareable links.
  */
 function showMenu(params: URLSearchParams): Promise<MenuChoice> {
   const menu = document.getElementById("menu")!;
@@ -293,10 +306,24 @@ function showMenu(params: URLSearchParams): Promise<MenuChoice> {
     spectator: mode === "spectate",
   });
 
+  const readStoredName = (): string => {
+    try {
+      return localStorage.getItem(NAME_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  };
+  const storeName = (name: string): void => {
+    try {
+      localStorage.setItem(NAME_STORAGE_KEY, name);
+    } catch {
+      /* storage unavailable (private mode) — ignore */
+    }
+  };
+
   if (params.has("name") || params.has("autostart")) {
     menu.style.display = "none";
-    const fallback = `Pilot-${Math.floor(Math.random() * 900 + 100)}`;
-    return Promise.resolve(toChoice(params.get("name") || fallback, params.get("mode") || "1v1"));
+    return Promise.resolve(toChoice(params.get("name") || readStoredName() || randomCallsign(), params.get("mode") || "1v1"));
   }
 
   return new Promise((resolve) => {
@@ -309,10 +336,19 @@ function showMenu(params: URLSearchParams): Promise<MenuChoice> {
         mode = btn.dataset.mode ?? "1v1";
       });
     }
+
     const nameInput = document.getElementById("menu-name") as HTMLInputElement;
+    // Remembered name, or a fresh random one on first visit.
+    nameInput.value = readStoredName() || randomCallsign();
+    document.getElementById("reroll-btn")!.addEventListener("click", () => {
+      nameInput.value = randomCallsign();
+      nameInput.focus();
+    });
+
     const play = () => {
+      const name = nameInput.value.trim() || randomCallsign();
+      storeName(name);
       menu.style.display = "none";
-      const name = nameInput.value.trim() || `Pilot-${Math.floor(Math.random() * 900 + 100)}`;
       resolve(toChoice(name, mode));
     };
     document.getElementById("play-btn")!.addEventListener("click", play);

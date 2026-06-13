@@ -1,4 +1,4 @@
-# TankClash ⚔️
+# 🪖 TankClash ⚔️
 
 Real-time multiplayer artillery combat on destructible terrain. Two armored
 vehicles duel on a procedurally generated arena, aiming continuously, charging

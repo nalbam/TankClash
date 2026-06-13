@@ -111,11 +111,18 @@
       }
       #menu h1 { font-size: 64px; letter-spacing: 0.08em; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
       #menu .tagline { color: var(--teal); letter-spacing: 0.2em; font-size: 13px; margin-top: -10px; }
+      #menu .name-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
       #menu input {
-        margin-top: 10px; padding: 10px 14px; width: 260px; text-align: center;
+        padding: 10px 14px; width: 240px; text-align: center;
         background: rgba(11,18,38,0.8); border: 1px solid rgba(45,212,191,0.4);
         border-radius: 8px; color: var(--cream); font-size: 15px;
       }
+      #reroll-btn {
+        padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 18px;
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(45,212,191,0.4);
+        color: var(--cream); line-height: 1;
+      }
+      #reroll-btn:hover { background: rgba(45,212,191,0.16); }
       #menu .modes { display: flex; gap: 10px; margin-top: 6px; }
       .mode-btn {
         padding: 12px 18px; border-radius: 10px; cursor: pointer;
@@ -213,7 +220,10 @@
     <div id="menu">
       <h1>TankClash ⚔️</h1>
       <div class="tagline">REAL-TIME ARTILLERY COMBAT</div>
-      <input id="menu-name" type="text" maxlength="16" placeholder="Call sign" />
+      <div class="name-row">
+        <input id="menu-name" type="text" maxlength="16" placeholder="Call sign" />
+        <button id="reroll-btn" type="button" title="Random call sign">🎲</button>
+      </div>
       <div class="modes">
         <div class="mode-btn active" data-mode="1v1">1v1<span class="sub">vs Bot</span></div>
         <div class="mode-btn" data-mode="2v2">2v2<span class="sub">teams of two</span></div>

@@ -47,3 +47,27 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - latency tolerance 7 → 9 (local movement no longer waits on the round trip; remote entities use a 100 ms interpolation buffer — the standard authoritative-netcode posture, with reconciliation proven correct)
   - multiplayer synchronization 8 → 9 (reconciliation keeps prediction locked to authoritative state; replay verified deterministic)
 - Status: all judgment categories now ≥ 8; all measurable categories meet targets. Stopping condition under review.
+
+## Iteration 4 — 2026-06-13 (documentation + stopping condition)
+
+- Changed: wrote the full README (install / dev + production run / controls /
+  verification / architecture / networking / gameplay tuning / known limitations)
+  for the Final Deliverable, and corrected `.env.example` from "webpack" to Vite
+  as required by the build wiring. No gameplay or engine code touched.
+- Gates: typecheck PASS | tests PASS (27/27) | bot match PASS | screenshots OK; `npm run build` (→ public/) and `npm run build:server` (→ dist/) both succeed.
+- Stopping condition check (all true):
+  - Milestone 1 complete — movement, mouse aim, charge cannon, projectile
+    physics, wind, destructible craters, health/damage, knockback, camera
+    follow, HUD, win/loss, round restart all present
+  - all four verification gates pass
+  - headless bot match completes with a winner, repeatedly (3/3)
+  - player can win or lose; terrain destruction affects tactics (asserted in
+    match:sim; bots shelter in blown-out pockets, visible in screenshots)
+  - measurable categories meet targets; judgment categories all ≥ 8 with evidence
+  - PROGRESS.md holds the full iteration history; README documents the slice
+- Final rubric: movement 9 · aiming 8 · sync 9 · projectile readability 7 ·
+  terrain destruction 8 · combat clarity 9 · visual polish 8 · UI readability 8 ·
+  bot usefulness 8 · server stability 9 · performance 8 · latency tolerance 9 ·
+  replayability 8. **Milestone 1 stopping condition met.**
+- Future work (Milestone 2+): more weapons, minimap, multiple arenas, 2v2,
+  spectator, projectile prediction, rollback.

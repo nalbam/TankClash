@@ -3,6 +3,7 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared/constants";
 import { AudioManager } from "./audio/audio";
 import { InputManager } from "./input/input";
 import { NetClient } from "./net/colyseusClient";
+import { LocalPredictor } from "./net/predictor";
 import { FollowCamera } from "./render/camera";
 import { Effects } from "./render/effects";
 import { createScene, updateWindParticles } from "./render/scene";
@@ -55,6 +56,8 @@ async function boot() {
   scene.add(terrainRenderer.group);
   let seenTerrainVersion = net.terrainVersion;
 
+  const predictor = new LocalPredictor();
+  let reconciledVersion = net.serverVersion;
   let lastTime = performance.now();
   let inputAccumulator = 0;
   let predictedCharge = 0;
@@ -66,8 +69,6 @@ async function boot() {
     fps = fps * 0.95 + (dt > 0 ? 1 / dt : 60) * 0.05;
 
     const state = net.state;
-    const { players, projectiles } = net.interpolated();
-    const local = players.get(net.sessionId);
 
     // Terrain: full rebuilds on new rounds, incremental on craters.
     if (net.terrainVersion !== seenTerrainVersion) {
@@ -77,18 +78,41 @@ async function boot() {
     for (const crater of net.craterQueue.splice(0)) terrainRenderer.onCrater(crater);
     terrainRenderer.update();
 
-    // Input → server at fixed cadence.
-    if (local?.alive) {
-      input.updateAim(followCam.camera, local.x, local.y);
+    // Reconcile prediction against the latest authoritative server patch.
+    if (net.serverVersion !== reconciledVersion) {
+      reconciledVersion = net.serverVersion;
+      const auth = net.authoritative(net.sessionId);
+      if (auth) {
+        if (!auth.alive) predictor.active = false;
+        else if (!predictor.active) predictor.reset(auth);
+        else predictor.reconcile(auth, net.terrain);
+      }
     }
+
+    // Aim from the predicted local position for zero-latency feel.
+    if (predictor.active) {
+      input.updateAim(followCam.camera, predictor.body.x, predictor.body.y);
+    }
+
+    // Sample input at a fixed cadence: send to server AND predict locally.
     inputAccumulator += dt;
     const sendInterval = 1 / INPUT_SEND_HZ;
     while (inputAccumulator >= sendInterval) {
       inputAccumulator -= sendInterval;
-      net.sendInput(input.sample());
+      const sample = input.sample();
+      net.sendInput(sample);
+      predictor.applyInput(sample, net.terrain);
     }
     if (input.consumeRestart() && state?.phase === "ended") {
       net.sendRestart();
+    }
+
+    const { players, projectiles } = net.interpolated();
+    const local = players.get(net.sessionId);
+    // Render the local tank from prediction instead of the delayed snapshot.
+    if (predictor.active && local) {
+      local.x = predictor.body.x;
+      local.y = predictor.body.y;
     }
 
     // Local charge prediction for a responsive meter.

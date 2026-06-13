@@ -21,6 +21,9 @@ export interface PlayerView {
   kills: number;
   x: number;
   y: number;
+  vx: number;
+  vy: number;
+  lastSeq: number;
   aimAngle: number;
   charging: boolean;
   charge: number;
@@ -61,6 +64,8 @@ export class NetClient {
   killQueue: Array<KillEvent & { victimName: string; killerName: string; victimTeam: string; killerTeam: string }> = [];
 
   ping = 0;
+  /** Bumps on every server patch — drives client reconciliation. */
+  serverVersion = 0;
 
   private snapshots: Snapshot[] = [];
   private pingTimer?: ReturnType<typeof setInterval>;
@@ -144,6 +149,9 @@ export class NetClient {
         kills: p.kills,
         x: p.x,
         y: p.y,
+        vx: p.vx,
+        vy: p.vy,
+        lastSeq: p.lastSeq,
         aimAngle: p.aimAngle,
         charging: p.charging,
         charge: p.charge,
@@ -157,6 +165,12 @@ export class NetClient {
     });
     this.snapshots.push({ t: performance.now(), players, projectiles });
     if (this.snapshots.length > BUFFER_LIMIT) this.snapshots.shift();
+    this.serverVersion++;
+  }
+
+  /** Latest authoritative view of a player (newest snapshot, no interpolation). */
+  authoritative(id: string): PlayerView | undefined {
+    return this.snapshots[this.snapshots.length - 1]?.players.get(id);
   }
 
   /** World view at (now − interpolation delay), lerped between snapshots. */

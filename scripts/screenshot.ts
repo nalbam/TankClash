@@ -25,7 +25,14 @@ function fail(message: string): never {
 
 function cleanup(): void {
   for (const child of children) {
-    if (!child.killed) child.kill("SIGTERM");
+    if (child.pid && !child.killed) {
+      // Kill the whole process group so tsx/vite child node processes die too.
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    }
   }
 }
 
@@ -33,6 +40,7 @@ function start(command: string, args: string[], env: Record<string, string> = {}
   const child = spawn(command, args, {
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, ...env },
+    detached: true, // new process group → cleanup can signal the whole tree
   });
   children.push(child);
   child.stderr?.on("data", (d) => process.stderr.write(`[${command}] ${d}`));

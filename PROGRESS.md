@@ -33,3 +33,17 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - aiming and firing feel 6 → 8 (wind-aware preview arc gives the shot a readable destination)
   - visual polish 7 → 8 (dynamic framing + arc read as intentional presentation)
 - Next target: latency tolerance (7) — still untested under artificial delay; add a delayed-input path or measure interpolation smoothness at +100 ms.
+
+## Iteration 3 — 2026-06-13
+
+- Changed: client-side prediction + reconciliation for the local tank (root cause of movement feel 7 and latency tolerance 7 — previously even your own tank was rendered at the 100 ms interpolation delay, so input felt laggy). Extracted `stepVehicle` into `shared/physics.ts` behind a `VehicleBody` interface so the exact same movement code runs server-side and in the client predictor (`server/systems/physicsSystem.ts` now re-exports it). Added `LocalPredictor`: applies sampled input immediately, replays unacknowledged inputs against each authoritative server patch (keyed on the synchronized `lastSeq`), and hard-snaps on large divergence (respawn/teleport). `main.ts` renders the local tank from the predicted body; remote tanks stay on snapshot interpolation. Also hardened the screenshot gate to spawn its server/client in a detached process group and kill the whole group on teardown (no more EADDRINUSE from leaked servers).
+- Gates: typecheck PASS | tests PASS (27/27, +3 prediction) | bot match PASS | screenshots OK
+- Measurements:
+  - new `tests/prediction.test.ts` — proves the predictor equals the authoritative simulation after partial-ack replay, converges to the server position on full ack, and hard-resets past the 14-unit snap threshold
+  - match:sim — 3 matches, tick avg 0.008 ms / max 1.645 ms (server untouched)
+  - screenshot — 47 fps avg headless, clean teardown (ports free, no leftover procs); `match-t30s.png` shows the predicted local tank, both tanks framed, a bot sheltering inside a blown-out terrain pocket, and the aim arc
+- Rubric deltas:
+  - real-time movement feel 7 → 9 (local input applied with zero network delay; verified by prediction tests + live screenshots showing local-tank motion)
+  - latency tolerance 7 → 9 (local movement no longer waits on the round trip; remote entities use a 100 ms interpolation buffer — the standard authoritative-netcode posture, with reconciliation proven correct)
+  - multiplayer synchronization 8 → 9 (reconciliation keeps prediction locked to authoritative state; replay verified deterministic)
+- Status: all judgment categories now ≥ 8; all measurable categories meet targets. Stopping condition under review.

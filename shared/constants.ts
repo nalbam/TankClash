@@ -38,6 +38,12 @@ export const WIND = {
   RESAMPLE_MAX_S: 15,
 } as const;
 
+// Status effects
+export const STATUS = {
+  SHIELD_REDUCTION: 0.55, // incoming damage multiplier reduction while shielded
+  BURN_DPS: 9,
+} as const;
+
 // Match flow
 export const MATCH = {
   ROUND_TIME_S: 120,

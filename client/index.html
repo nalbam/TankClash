@@ -50,14 +50,14 @@
       #conn-dot.bad { background: var(--red); }
       #fps { color: rgba(241,233,210,0.55); }
 
-      #weapon-bar { bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; }
+      #weapon-bar { bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 5px; flex-wrap: wrap; justify-content: center; max-width: 96vw; }
       .weapon-slot {
-        display: flex; align-items: center; gap: 6px;
-        padding: 5px 10px; border-radius: 6px;
+        display: flex; align-items: center; gap: 5px;
+        padding: 4px 8px; border-radius: 6px;
         background: rgba(255,255,255,0.05);
         border: 1px solid transparent;
-        font-size: 12px; color: rgba(241,233,210,0.6);
-        transition: all 0.12s;
+        font-size: 11px; color: rgba(241,233,210,0.6);
+        transition: all 0.12s; white-space: nowrap;
       }
       .weapon-slot.active {
         background: rgba(45,212,191,0.16);

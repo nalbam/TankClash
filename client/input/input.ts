@@ -22,8 +22,11 @@ export class InputManager {
       this.keys.add(e.code);
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.dashQueued = true;
       if (e.code === "Enter") this.restartQueued = true;
-      const digit = e.code.match(/^Digit([1-5])$/);
-      if (digit) this.weaponQueued = Number(digit[1]) - 1;
+      const digit = e.code.match(/^Digit([0-9])$/);
+      if (digit) {
+        const n = Number(digit[1]);
+        this.weaponQueued = n === 0 ? 9 : n - 1; // 1..9 → 0..8, 0 → 10th
+      }
       if (e.code === "Tab") {
         this.scoreboardOpen = true;
         e.preventDefault();

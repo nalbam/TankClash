@@ -20,11 +20,22 @@ function flatColumnTerrain(): TerrainGrid {
 }
 
 describe("weapon catalog", () => {
-  it("exposes exactly five selectable weapons, each with a unique role", () => {
-    expect(SELECTABLE_WEAPONS).toHaveLength(5);
+  it("exposes ten selectable weapons, each with a unique role", () => {
+    expect(SELECTABLE_WEAPONS).toHaveLength(10);
     const ids = SELECTABLE_WEAPONS.map((w) => w.id);
-    expect(new Set(ids).size).toBe(5);
-    expect(ids).toEqual(["cannon", "mortar", "shotgun", "cluster", "drill"]);
+    expect(new Set(ids).size).toBe(10);
+    expect(ids).toEqual([
+      "cannon",
+      "mortar",
+      "shotgun",
+      "cluster",
+      "drill",
+      "railgun",
+      "gravity",
+      "napalm",
+      "shield",
+      "repair",
+    ]);
   });
 
   it("keeps the bomblet non-selectable (cluster child only)", () => {

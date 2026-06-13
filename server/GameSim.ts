@@ -7,7 +7,7 @@ import { GameState } from "./schema/GameState";
 import { PlayerState } from "./schema/PlayerState";
 import type { ProjectileState } from "./schema/ProjectileState";
 import { createSimEvents, type SimEvents } from "./simEvents";
-import { applyExplosion } from "./systems/damageSystem";
+import { applyExplosion, stepStatus } from "./systems/damageSystem";
 import { stepMatch, type MatchRuntime } from "./systems/matchSystem";
 import { stepProjectile, stepVehicle } from "./systems/physicsSystem";
 import { spawnProjectile, stepWeapon } from "./systems/weaponSystem";
@@ -77,6 +77,8 @@ export class GameSim {
     if (this.state.phase === "playing") {
       this.state.players.forEach((p, id) => {
         if (!p.alive) return;
+        stepStatus(this.state, this.events, p, id, dt);
+        if (!p.alive) return; // burn may have killed this tick
         stepWeapon(this.state, this.events, id, p, () => `p${this.nextProjId++}`, dt);
         stepVehicle(p, this.terrain, dt);
       });
@@ -195,6 +197,9 @@ export class GameSim {
     p.charge = 0;
     p.charging = false;
     p.cooldown = 0;
+    p.shieldTime = 0;
+    p.burnTime = 0;
+    p.burnOwnerId = "";
     p.aimAngle = p.team === "blue" ? 0.8 : Math.PI - 0.8;
     p.input = {
       seq: p.input?.seq ?? 0,

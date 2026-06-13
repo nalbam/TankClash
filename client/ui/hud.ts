@@ -44,7 +44,8 @@ export class Hud {
     SELECTABLE_WEAPONS.forEach((w, i) => {
       const slot = document.createElement("div");
       slot.className = "weapon-slot";
-      slot.innerHTML = `<span class="key">${i + 1}</span><span>${w.name}</span>`;
+      const key = i < 9 ? String(i + 1) : "0";
+      slot.innerHTML = `<span class="key">${key}</span><span>${w.name}</span>`;
       this.weaponBar.appendChild(slot);
       this.weaponSlots.set(w.id, slot);
     });

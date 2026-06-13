@@ -50,6 +50,8 @@ function viewFromBody(body: VehicleBody, lastSeq: number): PlayerView {
     charge: 0,
     cooldown: 0,
     weapon: "cannon",
+    shieldTime: 0,
+    burnTime: 0,
   };
 }
 

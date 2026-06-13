@@ -19,6 +19,10 @@ export class PlayerState extends Schema {
   @type("number") kills = 0;
   @type("string") weapon = "cannon";
   @type("number") lastSeq = 0;
+  /** Remaining shield time (s); >0 reduces incoming damage. */
+  @type("number") shieldTime = 0;
+  /** Remaining burn time (s); ticks damage-over-time. */
+  @type("number") burnTime = 0;
 
   // Server-only runtime fields (not decorated → not synchronized).
   input: PlayerInput = {
@@ -32,4 +36,6 @@ export class PlayerState extends Schema {
   };
   grounded = false;
   dashCooldown = 0;
+  /** Who set the current burn (for kill credit). */
+  burnOwnerId = "";
 }

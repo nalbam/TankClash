@@ -43,6 +43,12 @@ export interface WeaponDef {
   pierce?: number;
   /** Drill tunnel carve radius per tick. */
   pierceRadius?: number;
+  /** Gravity Bomb: explosion pulls toward the center instead of pushing away. */
+  pull?: boolean;
+  /** Napalm: apply burn (damage-over-time) to enemies in the splash radius. */
+  burnDuration?: number;
+  /** Team support (Shield Grenade / Repair Foam): affects allies, not enemies. */
+  teamSupport?: { shieldDuration?: number; heal?: number };
 }
 
 const BASE: Pick<WeaponDef, "gravityScale" | "selectable"> = { gravityScale: 1, selectable: true };
@@ -160,6 +166,120 @@ export const DRILL: WeaponDef = {
   pierceRadius: 1.5,
 };
 
+export const RAILGUN: WeaponDef = {
+  ...BASE,
+  id: "railgun",
+  name: "Railgun",
+  // Hyper-velocity flat shot — near-instant, high damage, demands aim.
+  minSpeed: 210,
+  maxSpeed: 280,
+  chargeTime: 1.6,
+  craterRadius: 2,
+  splashRadius: 2.5,
+  damageMax: 30,
+  directBonus: 28,
+  knockback: 16,
+  projectileRadius: 0.3,
+  windInfluence: 0,
+  cooldown: 1.9,
+  selfDamageScale: 0,
+  gravityScale: 0,
+  color: 0x6ad8ff,
+  explosionColor: 0x9be8ff,
+};
+
+export const GRAVITY_BOMB: WeaponDef = {
+  ...BASE,
+  id: "gravity",
+  name: "Gravity Bomb",
+  // Implodes — pulls everyone toward the blast (combo into hazards/holes).
+  minSpeed: 38,
+  maxSpeed: 78,
+  chargeTime: 1.3,
+  craterRadius: 3,
+  splashRadius: 10,
+  damageMax: 16,
+  directBonus: 6,
+  knockback: 40,
+  projectileRadius: 0.5,
+  windInfluence: 0.7,
+  cooldown: 2.1,
+  selfDamageScale: 0.3,
+  gravityScale: 0.9,
+  color: 0xb84dff,
+  explosionColor: 0xc77bff,
+  pull: true,
+};
+
+export const NAPALM: WeaponDef = {
+  ...BASE,
+  id: "napalm",
+  name: "Napalm",
+  // Low burst, strong burn DoT — area denial / finisher.
+  minSpeed: 34,
+  maxSpeed: 76,
+  chargeTime: 1.2,
+  craterRadius: 3,
+  splashRadius: 6,
+  damageMax: 14,
+  directBonus: 8,
+  knockback: 12,
+  projectileRadius: 0.45,
+  windInfluence: 0.8,
+  cooldown: 1.6,
+  selfDamageScale: 0.5,
+  gravityScale: 1,
+  color: 0xff5a1e,
+  explosionColor: 0xff7a2e,
+  burnDuration: 4,
+};
+
+export const SHIELD_GRENADE: WeaponDef = {
+  ...BASE,
+  id: "shield",
+  name: "Shield Grenade",
+  // Support: shields allies in the burst (no enemy damage).
+  minSpeed: 36,
+  maxSpeed: 74,
+  chargeTime: 1,
+  craterRadius: 0,
+  splashRadius: 7,
+  damageMax: 0,
+  directBonus: 0,
+  knockback: 0,
+  projectileRadius: 0.5,
+  windInfluence: 0.7,
+  cooldown: 2.6,
+  selfDamageScale: 0,
+  gravityScale: 1,
+  color: 0x4dffd0,
+  explosionColor: 0x4dffd0,
+  teamSupport: { shieldDuration: 6 },
+};
+
+export const REPAIR_FOAM: WeaponDef = {
+  ...BASE,
+  id: "repair",
+  name: "Repair Foam",
+  // Support: heals allies in the burst (no enemy damage).
+  minSpeed: 36,
+  maxSpeed: 74,
+  chargeTime: 1.1,
+  craterRadius: 0,
+  splashRadius: 6,
+  damageMax: 0,
+  directBonus: 0,
+  knockback: 0,
+  projectileRadius: 0.5,
+  windInfluence: 0.7,
+  cooldown: 3,
+  selfDamageScale: 0,
+  gravityScale: 1,
+  color: 0x6affa0,
+  explosionColor: 0x6affa0,
+  teamSupport: { heal: 42 },
+};
+
 /** Cluster child — not directly selectable. */
 export const BOMBLET: WeaponDef = {
   ...BASE,
@@ -189,8 +309,24 @@ export const WEAPONS: Record<string, WeaponDef> = {
   shotgun: SHOTGUN,
   cluster: CLUSTER,
   drill: DRILL,
+  railgun: RAILGUN,
+  gravity: GRAVITY_BOMB,
+  napalm: NAPALM,
+  shield: SHIELD_GRENADE,
+  repair: REPAIR_FOAM,
   bomblet: BOMBLET,
 };
 
-/** Ordered list for number-key selection (1..N). */
-export const SELECTABLE_WEAPONS: WeaponDef[] = [CANNON, MORTAR, SHOTGUN, CLUSTER, DRILL];
+/** Ordered list for number-key selection (1..0 → indices 0..9). */
+export const SELECTABLE_WEAPONS: WeaponDef[] = [
+  CANNON,
+  MORTAR,
+  SHOTGUN,
+  CLUSTER,
+  DRILL,
+  RAILGUN,
+  GRAVITY_BOMB,
+  NAPALM,
+  SHIELD_GRENADE,
+  REPAIR_FOAM,
+];

@@ -29,6 +29,8 @@ export interface PlayerView {
   charge: number;
   cooldown: number;
   weapon: string;
+  shieldTime: number;
+  burnTime: number;
 }
 
 export interface ProjectileView {
@@ -182,6 +184,8 @@ export class NetClient {
         charge: p.charge,
         cooldown: p.cooldown,
         weapon: p.weapon,
+        shieldTime: p.shieldTime,
+        burnTime: p.burnTime,
       });
     });
     const projectiles = new Map<string, ProjectileView>();

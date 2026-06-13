@@ -68,12 +68,21 @@ export class BotController {
 
     const range = Math.abs(enemy.x - me.x);
     const blocked = !this.lineOfSight(sim, me, enemy);
+    const r = this.rng();
     let choice: string;
-    if (range < 26) {
+    if (me.health < 35 && r < 0.5) {
+      choice = "repair"; // self-heal when hurt
+    } else if (range < 26) {
       choice = "shotgun";
     } else if (blocked) {
-      choice = this.rng() < 0.5 ? "mortar" : "drill";
-    } else if (this.rng() < 0.3) {
+      choice = r < 0.4 ? "mortar" : r < 0.7 ? "drill" : "napalm";
+    } else if (r < 0.15) {
+      choice = "railgun";
+    } else if (r < 0.3) {
+      choice = "gravity";
+    } else if (r < 0.45) {
+      choice = "napalm";
+    } else if (r < 0.6) {
       choice = "cluster";
     } else {
       choice = "cannon";
@@ -248,6 +257,11 @@ function solveBallistic(
 ): { angle: number; speed: number } | null {
   // Match the projectile's actual gravity so flat (drill) and lobbed (mortar)
   // weapons are aimed correctly. Scan low angles too for near-direct fire.
+  // Flat trajectory (railgun): aim straight at the target.
+  if (gravityScale < 0.02) {
+    return { angle: Math.atan2(dy, dx), speed: maxSpeed * 0.95 };
+  }
+
   const g = -GRAVITY * gravityScale;
   const dir = Math.sign(dx) || 1;
   const adx = Math.abs(dx);

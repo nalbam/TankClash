@@ -10,6 +10,7 @@ interface TankView {
   group: THREE.Group;
   barrel: THREE.Group;
   chargeGlow: THREE.Mesh;
+  shieldBubble: THREE.Mesh;
   body: THREE.Mesh;
   team: string;
 }
@@ -42,6 +43,16 @@ export class VehicleRenderer {
         tank.chargeGlow.visible = true;
       } else {
         tank.chargeGlow.visible = false;
+      }
+
+      // Shield bubble + burn tint reflect status effects.
+      tank.shieldBubble.visible = view.alive && view.shieldTime > 0;
+      const bodyMat = tank.body.material as THREE.MeshStandardMaterial;
+      if (view.burnTime > 0) {
+        bodyMat.emissive.setHex(0xff4400);
+        bodyMat.emissiveIntensity = 0.6;
+      } else {
+        bodyMat.emissiveIntensity = 0;
       }
     }
 
@@ -120,6 +131,14 @@ export class VehicleRenderer {
     barrel.add(chargeGlow);
     group.add(barrel);
 
-    return { group, barrel, chargeGlow, body, team };
+    // Shield bubble.
+    const shieldBubble = new THREE.Mesh(
+      new THREE.SphereGeometry(2.4, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0x4dffd0, transparent: true, opacity: 0.22, depthWrite: false }),
+    );
+    shieldBubble.visible = false;
+    group.add(shieldBubble);
+
+    return { group, barrel, chargeGlow, shieldBubble, body, team };
   }
 }

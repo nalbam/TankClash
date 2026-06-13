@@ -155,3 +155,38 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   - server stability 9 → 10 (reconnect handles drops gracefully)
 - Milestone 2 complete: 5 weapons, weapon selection, 4 arenas, minimap,
   smarter bots, per-weapon visuals, reconnect. All gates green.
+
+---
+
+# Milestone 3
+
+## Iteration 8 — 2026-06-13 (five more weapons + status effects)
+
+- Changed: added a **status-effect system** (`shieldTime`, `burnTime` on
+  PlayerState; `STATUS` constants) and five new weapons, bringing the arsenal to
+  **ten**:
+  - **Railgun** — hyper-velocity flat shot (gravityScale 0, speed 210–280),
+    near-instant with a big direct-hit bonus; reuses the projectile path
+  - **Gravity Bomb** — explosion pulls victims inward (combo into holes/hazards)
+  - **Napalm** — low burst but applies burn damage-over-time to enemies
+  - **Shield Grenade** — team support: shields allies in the burst (no enemy damage)
+  - **Repair Foam** — team support: heals allies in the burst
+  `damageSystem` now handles inward pull, burn application, ally-only buffs, and
+  shield damage reduction; `GameSim` ticks burn DoT and shield decay each frame.
+  Weapon selection extended to keys 1–9 and 0 (ten slots, two-row HUD bar), bot
+  weapon choice includes the new weapons (self-heal when hurt, railgun aimed via
+  a flat-trajectory solver branch), and tanks show a shield bubble + burn tint.
+- Gates: typecheck PASS | tests PASS (42/42, +7 status, +catalog) | bot match PASS | screenshots OK
+- Measurements:
+  - `tests/status.test.ts` proves gravity pulls inward, napalm burns and the DoT
+    kills with igniter credit, shield buffs allies/ignores enemies and reduces
+    damage by `SHIELD_REDUCTION`, repair heals allies only, railgun is a flat
+    high-speed shot
+  - match:sim — bots wield all ten weapons; 19–49 s matches, varied winners,
+    tick avg 0.008 ms
+  - screenshot — `match-t30s.png` shows the ten-weapon two-row bar, blast
+    shockwaves and a damage number on the local tank
+- Rubric deltas:
+  - replayability 10 → stays 10 (now ten weapons × four arenas)
+  - combat clarity stays 9; bot usefulness stays 9 (weapon-aware aim holds with railgun)
+- Next target: 2v2 team mode + round summary, then spectator mode + lobby.

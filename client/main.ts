@@ -7,6 +7,7 @@ import { FollowCamera } from "./render/camera";
 import { Effects } from "./render/effects";
 import { createScene, updateWindParticles } from "./render/scene";
 import { TerrainRenderer } from "./render/terrainRenderer";
+import { TrajectoryPreview } from "./render/trajectory";
 import { VehicleRenderer } from "./render/vehicleRenderer";
 import { Hud } from "./ui/hud";
 
@@ -23,6 +24,8 @@ async function boot() {
   scene.add(effects.group);
   const vehicles = new VehicleRenderer();
   scene.add(vehicles.group);
+  const trajectory = new TrajectoryPreview();
+  scene.add(trajectory.points);
 
   window.addEventListener("resize", () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -115,9 +118,30 @@ async function boot() {
     vehicles.sync(players);
     if (state) updateWindParticles(windParticles, state.wind, dt);
 
-    // Camera: follow local tank; otherwise frame the action.
+    // Aim preview: local angle for zero-latency feedback, server constants for truth.
+    trajectory.update(
+      Boolean(local?.alive && state?.phase === "playing"),
+      local?.x ?? 0,
+      local?.y ?? 0,
+      input.aimAngle,
+      input.charging ? Math.max(predictedCharge, 0.05) : 0.3,
+      state?.wind ?? 0,
+      net.terrain,
+    );
+
+    // Camera: keep the local tank and the nearest enemy framed together.
     if (local?.alive) {
-      followCam.update(local.x, local.y, Math.cos(local.aimAngle), dt);
+      let enemy: { x: number; y: number } | null = null;
+      let bestD = Infinity;
+      for (const p of players.values()) {
+        if (!p.alive || p.team === local.team) continue;
+        const d = Math.abs(p.x - local.x);
+        if (d < bestD) {
+          bestD = d;
+          enemy = p;
+        }
+      }
+      followCam.update(local.x, local.y, Math.cos(local.aimAngle), dt, enemy);
     } else if (players.size > 0) {
       let cx = 0;
       let cy = 0;

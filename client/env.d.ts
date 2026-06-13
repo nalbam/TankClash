@@ -8,5 +8,8 @@ interface Window {
     players: number;
     fps: number;
     phase: string;
+    /** X of the first non-local tank — lets tests detect a frozen (paused) world. */
+    enemyX: number;
+    paused: boolean;
   };
 }

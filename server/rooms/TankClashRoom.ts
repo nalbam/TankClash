@@ -16,6 +16,8 @@ export class TankClashRoom extends Room<GameState> {
   private lastSeed = 0;
   /** Total tanks to keep in the match (humans + bots): 2 for 1v1, 4 for 2v2. */
   private fillTo = 2;
+  /** Solo/bot matches can be truly paused; shared matches cannot. */
+  private paused = false;
 
   onCreate(options: { seed?: number; mode?: string } = {}) {
     const seed = Number.isFinite(options.seed) ? Number(options.seed) >>> 0 : (Date.now() & 0x7fffffff) >>> 0;
@@ -44,6 +46,10 @@ export class TankClashRoom extends Room<GameState> {
     this.onMessage(MSG.SELECT_WEAPON, (client, weaponId) => {
       if (typeof weaponId === "string") this.sim.selectWeapon(client.sessionId, weaponId);
     });
+    this.onMessage(MSG.PAUSE, (_client, paused) => {
+      // Only honor pause when a single human is connected (solo/bot match).
+      if (this.clients.length <= 1) this.paused = paused === true;
+    });
     this.onMessage(MSG.PING, (client, t) => {
       client.send(MSG.PONG, t);
     });
@@ -56,6 +62,7 @@ export class TankClashRoom extends Room<GameState> {
         typeof options.name === "string" && options.name.trim() ? options.name.trim().slice(0, 16) : "Player";
       this.sim.addPlayer(client.sessionId, name, false);
     }
+    this.paused = false; // a new arrival resumes the match
     this.fillBots();
     const init: TerrainInit = { seed: this.sim.state.terrainSeed, craters: this.sim.craters };
     client.send(MSG.TERRAIN_INIT, init);
@@ -63,6 +70,7 @@ export class TankClashRoom extends Room<GameState> {
 
   onLeave(client: Client) {
     this.sim.removePlayer(client.sessionId);
+    this.paused = false; // never strand the room paused after someone leaves
   }
 
   /** Top up the match with bots so it reaches the mode's tank count. */
@@ -79,6 +87,8 @@ export class TankClashRoom extends Room<GameState> {
   }
 
   private fixedTick() {
+    if (this.paused) return; // solo match frozen; state stops changing
+
     for (const [id, bot] of this.bots) {
       if (!this.sim.state.players.has(id)) continue;
       this.sim.setInput(id, bot.update(this.sim, FIXED_DT));

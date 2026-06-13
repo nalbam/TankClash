@@ -75,6 +75,7 @@ SERVER_URL="game.example.com:2567" npm run build
 | `1`–`9`, `0` | select weapon |
 | `Tab` | scoreboard |
 | `Enter` | restart (on the win screen) |
+| `Esc` | pause menu (resume / quit to lobby) |
 
 A **gamepad** also works (standard mapping): left stick / d-pad move, A jump,
 B dash, right trigger charge/fire, right stick aim, LB/RB cycle weapons, Start
@@ -111,6 +112,10 @@ Pick from the lobby menu (or pass `?mode=2v2` / `?mode=spectate` in the URL):
 - **1v1** — you versus a bot
 - **2v2** — teams of two (bots fill empty slots)
 - **Spectate** — watch a bot match with a free action camera, no tank
+
+Press `Esc` in-match for the pause menu. In a solo/bot match pause freezes the
+whole world (bots included); in a shared match it's a local menu and the game
+keeps running. "Quit to Lobby" returns you to the menu.
 
 ## Verification
 

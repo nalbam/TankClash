@@ -5,7 +5,7 @@
  * opposing slot), and captures screenshots at fixed times. Fails when the
  * canvas renders blank or the client never reaches a playing match.
  */
-import { spawn, type ChildProcess } from "node:child_process";
+import { execSync, spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -16,6 +16,22 @@ const SHOT_TIMES_S = [2, 10, 30];
 const MIN_PNG_BYTES = 30_000; // a blank/black frame compresses far below this
 
 const children: ChildProcess[] = [];
+
+/** Kill any stale listener on a port so we never attach to a leftover server. */
+function freePort(port: number): void {
+  try {
+    const out = execSync(`ss -tlnp 2>/dev/null | grep ':${port} ' || true`).toString();
+    for (const m of out.matchAll(/pid=(\d+)/g)) {
+      try {
+        process.kill(Number(m[1]), "SIGKILL");
+      } catch {
+        /* already gone */
+      }
+    }
+  } catch {
+    /* ss unavailable — best effort */
+  }
+}
 
 function fail(message: string): never {
   console.error(`\n❌ SCREENSHOT GATE FAILED: ${message}`);
@@ -64,6 +80,12 @@ async function waitForHttp(url: string, timeoutMs: number): Promise<void> {
 async function run(): Promise<void> {
   mkdirSync("screenshots", { recursive: true });
 
+  // Clear any leftover server/client from a previous run so we never attach to
+  // a stale room (which would show phantom players).
+  freePort(SERVER_PORT);
+  freePort(CLIENT_PORT);
+  await new Promise((r) => setTimeout(r, 400));
+
   console.log("starting server…");
   start("npx", ["tsx", "server/index.ts"], { PORT: String(SERVER_PORT) });
   await waitForHttp(`http://localhost:${SERVER_PORT}/api/rooms`, 20_000);
@@ -110,6 +132,27 @@ async function run(): Promise<void> {
     }
     if (!flags.connected) fail(`connection dropped by t=${t}s`);
   }
+
+  // Pause check: in a solo match, Escape opens the pause menu and freezes the
+  // world. Measure after the interpolation buffer has caught up to the frozen
+  // server state, then confirm the bot does not move further.
+  const readEnemyX = () => page.evaluate(() => (window as any).__tankclash.enemyX as number);
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 300));
+  const menuShown = await page.evaluate(
+    () => getComputedStyle(document.getElementById("pause-menu")!).display !== "none",
+  );
+  if (!menuShown) fail("pause menu did not open on Escape");
+
+  await new Promise((r) => setTimeout(r, 700)); // let interpolation settle on frozen state
+  const settledX = await readEnemyX();
+  await new Promise((r) => setTimeout(r, 2000));
+  const laterX = await readEnemyX();
+  if (Math.abs(laterX - settledX) > 0.3) {
+    fail(`bot kept moving while paused (Δx=${(laterX - settledX).toFixed(2)}) — solo pause should freeze the world`);
+  }
+  await page.screenshot({ path: path.join("screenshots", "paused.png") });
+  console.log(`  pause → menu shown, bot frozen (Δx=${(laterX - settledX).toFixed(2)})`);
 
   const avgFps = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
   console.log(`\n✅ SCREENSHOT GATE PASSED — avg fps ${avgFps.toFixed(0)} (headless swiftshader)`);

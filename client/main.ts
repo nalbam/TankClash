@@ -39,10 +39,10 @@ async function boot() {
   const net = new NetClient();
   const params = new URLSearchParams(location.search);
 
-  window.__tankclash = { connected: false, players: 0, fps: 0, phase: "menu" };
+  window.__tankclash = { connected: false, players: 0, fps: 0, phase: "menu", enemyX: 0, paused: false };
 
   const choice = await showMenu(params);
-  window.__tankclash.phase = "connecting";
+  window.__tankclash!.phase = "connecting";
 
   try {
     await net.connect(choice.name, { mode: choice.mode, spectator: choice.spectator });
@@ -75,6 +75,20 @@ async function boot() {
   let predictedCharge = 0;
   let fps = 60;
 
+  // Pause menu: Esc/Start toggles, Resume closes, Quit returns to the lobby.
+  let paused = false;
+  const pauseMenu = document.getElementById("pause-menu")!;
+  const setPaused = (next: boolean) => {
+    paused = next;
+    pauseMenu.style.display = paused ? "flex" : "none";
+    net.sendPause(paused);
+  };
+  document.getElementById("resume-btn")!.addEventListener("click", () => setPaused(false));
+  document.getElementById("quit-btn")!.addEventListener("click", () => {
+    net.sendPause(false);
+    location.reload(); // back to a clean lobby
+  });
+
   function frame(now: number) {
     const dt = Math.min(0.1, (now - lastTime) / 1000);
     lastTime = now;
@@ -95,6 +109,12 @@ async function boot() {
     // Players predict and send input; spectators just watch.
     if (!net.spectator) {
       input.pollGamepad();
+
+      if (input.consumePauseToggle()) setPaused(!paused);
+    }
+
+    // While paused, hold position (no input) but keep rendering the world.
+    if (!net.spectator && !paused) {
 
       // Reconcile prediction against the latest authoritative server patch.
       if (net.serverVersion !== reconciledVersion) {
@@ -232,11 +252,20 @@ async function boot() {
       overlay.textContent = "CONNECTION LOST — RECONNECTING…";
     }
 
+    let enemyX = 0;
+    for (const [id, p] of players) {
+      if (id !== net.sessionId) {
+        enemyX = p.x;
+        break;
+      }
+    }
     window.__tankclash = {
       connected: net.connected,
       players: players.size,
       fps: Math.round(fps),
       phase: state?.phase ?? "unknown",
+      enemyX,
+      paused,
     };
 
     renderer.render(scene, followCam.camera);

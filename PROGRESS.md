@@ -252,3 +252,27 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
 - Limitation: live testing needs a physical controller; only the pure mapping is
   gate-covered. The full Milestone 3 feature set (minus the descoped replay
   recording) is now complete.
+
+## Iteration 12 — 2026-06-13 (pause + quit to lobby)
+
+- Changed: added a **pause menu** (Esc or gamepad Start) with Resume and Quit to
+  Lobby. Pause is honored server-side only when a single human is connected
+  (`clients.length <= 1`): the room skips its fixed tick, so a solo/bot match
+  truly freezes — bots included. In a shared match the request is ignored
+  (one player can't freeze everyone) and the menu is local-only; a new arrival
+  or a leave resumes the room. Quit to Lobby returns to the menu via a clean
+  reload. While paused the client stops sending input and renders the frozen
+  world behind a blurred overlay.
+  - Also fixed a latent gate-reliability bug found along the way: the screenshot
+    gate could attach to a leftover server from a prior run (showing phantom
+    players); it now frees ports 2567/8087 before starting.
+- Gates: typecheck PASS | tests PASS (49/49) | bot match PASS | screenshots OK
+- Measurements:
+  - the screenshot gate now asserts pause behavior: after Esc the pause menu is
+    visible and the bot's x is frozen (Δx=0.00 over 2 s once interpolation
+    settles) — `screenshots/paused.png` shows the overlay with both tanks halted
+  - 1v1 capture back to the correct 2 players after the port-cleanup fix
+- Rubric deltas: server stability stays 10 (pause is bounded to solo matches);
+  UI readability stays 10 (clear pause/quit flow).
+- This is a post-Milestone-3 usability addition requested after the spec
+  milestones were complete.

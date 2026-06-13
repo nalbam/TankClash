@@ -31,6 +31,7 @@ export class InputManager {
   private mouseNdc = new THREE.Vector2();
   private dashQueued = false;
   private restartQueued = false;
+  private pauseToggleQueued = false;
   private weaponQueued: number | null = null;
   private weaponCycleQueued = 0;
   private seq = 0;
@@ -53,6 +54,7 @@ export class InputManager {
       this.keys.add(e.code);
       if (e.code === "ShiftLeft" || e.code === "ShiftRight") this.dashQueued = true;
       if (e.code === "Enter") this.restartQueued = true;
+      if (e.code === "Escape") this.pauseToggleQueued = true;
       const digit = e.code.match(/^Digit([0-9])$/);
       if (digit) {
         const n = Number(digit[1]);
@@ -122,7 +124,7 @@ export class InputManager {
     if (edge(1)) this.dashQueued = true; // B
     if (edge(5)) this.weaponCycleQueued = 1; // RB → next
     if (edge(4)) this.weaponCycleQueued = -1; // LB → prev
-    if (edge(9)) this.restartQueued = true; // Start
+    if (edge(9)) this.pauseToggleQueued = true; // Start → pause
 
     this.gpPrevButtons = pad.buttons.map((b) => b.pressed || b.value > TRIGGER_THRESHOLD);
   }
@@ -165,6 +167,13 @@ export class InputManager {
     const r = this.restartQueued;
     this.restartQueued = false;
     return r;
+  }
+
+  /** True if Escape (or the pad Start button) was pressed since last call. */
+  consumePauseToggle(): boolean {
+    const p = this.pauseToggleQueued;
+    this.pauseToggleQueued = false;
+    return p;
   }
 
   /** Returns a 0-based weapon index if a number key was pressed since last call. */

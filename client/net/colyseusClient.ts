@@ -163,6 +163,10 @@ export class NetClient {
     if (this.connected) this.room.send(MSG.SELECT_WEAPON, weaponId);
   }
 
+  sendPause(paused: boolean): void {
+    if (this.connected) this.room.send(MSG.PAUSE, paused);
+  }
+
   get state() {
     return this.room?.state;
   }

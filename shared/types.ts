@@ -48,6 +48,7 @@ export const MSG = {
   INPUT: "input",
   RESTART: "restart",
   SELECT_WEAPON: "selectWeapon",
+  PAUSE: "pause",
   TERRAIN_INIT: "terrainInit",
   CRATER: "crater",
   EXPLOSION: "explosion",

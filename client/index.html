@@ -131,6 +131,22 @@
       }
       #play-btn:hover { filter: brightness(1.1); }
       #menu .hint { color: rgba(241,233,210,0.4); font-size: 12px; margin-top: 4px; }
+
+      #pause-menu {
+        position: absolute; inset: 0; z-index: 9; display: none;
+        flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+        background: rgba(7, 11, 29, 0.72); backdrop-filter: blur(3px);
+      }
+      #pause-menu h2 { font-size: 44px; letter-spacing: 0.12em; }
+      #pause-menu .pause-note { color: rgba(241,233,210,0.5); font-size: 12px; margin-top: -6px; }
+      #pause-menu button {
+        padding: 12px 36px; border-radius: 10px; cursor: pointer; min-width: 220px;
+        font-size: 16px; letter-spacing: 0.06em; border: 1px solid rgba(45,212,191,0.4);
+        background: rgba(45,212,191,0.12); color: var(--cream);
+      }
+      #pause-menu button:hover { background: rgba(45,212,191,0.22); }
+      #pause-menu #quit-btn { border-color: rgba(255,93,93,0.4); background: rgba(255,93,93,0.12); }
+      #pause-menu #quit-btn:hover { background: rgba(255,93,93,0.22); }
     </style>
   </head>
   <body>
@@ -185,6 +201,13 @@
       </div>
 
       <div id="overlay-msg" class="hud panel" style="display:none"></div>
+    </div>
+
+    <div id="pause-menu">
+      <h2>PAUSED</h2>
+      <div class="pause-note">Esc or Start to resume</div>
+      <button id="resume-btn">Resume</button>
+      <button id="quit-btn">Quit to Lobby</button>
     </div>
 
     <div id="menu">

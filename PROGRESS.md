@@ -276,3 +276,28 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
   UI readability stays 10 (clear pause/quit flow).
 - This is a post-Milestone-3 usability addition requested after the spec
   milestones were complete.
+
+## Iteration 13 — 2026-06-13 (fall-death danger zone)
+
+- Changed: removed the implicit world floor so falling into a bottomless gap is
+  lethal, matching the PROMPT's "fall into holes or danger zones" intent.
+  Root cause of the reported issue: `solidAt` treated everything below the grid
+  (`cy < 0`) as solid, so a tank dropping through a fully-destroyed column just
+  landed safely at y≈1 and the `FALL_KILL_Y` check (y < -5) was unreachable dead
+  code — tanks could get stuck in deep pits instead of dying. `solidAt` now
+  returns solid only for the side walls; below the terrain is empty, so a tank
+  that falls keeps dropping until the match system's fall-kill fires. Spawns are
+  unaffected (they sit on `surfaceY`), and side walls still bound the arena
+  horizontally.
+- Gates: typecheck PASS | tests PASS (50/50, +1 fall-death) | bot match PASS | screenshots OK
+- Measurements:
+  - `tests/match.test.ts` now proves a tank dropped through a carved-out column
+    dies (and is below y=0 when it does); the terrain test asserts walls solid /
+    floor absent / sky empty
+  - match:sim still completes 3 matches with winners (bots survive normal play;
+    only fully-destroyed columns are deadly), screenshot gate green incl. pause
+- Decision: chosen behavior is **instant death** (danger zone), per the user's
+  selection over safe-respawn / damage+respawn / stuck-fix alternatives.
+- Follow-up worth noting: bots don't yet path around freshly-opened pits, so they
+  can occasionally fall in — acceptable for now (matches still resolve), a future
+  bot-awareness improvement.

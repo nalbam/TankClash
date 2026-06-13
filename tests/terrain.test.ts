@@ -32,12 +32,12 @@ describe("TerrainGrid", () => {
     expect(g.solidAtWorld(x, y)).toBe(false);
   });
 
-  it("treats side walls and floor as solid, sky as empty", () => {
+  it("has solid side walls but no floor (bottomless pit) and empty sky", () => {
     const g = new TerrainGrid();
-    expect(g.solidAt(-1, 10)).toBe(true);
-    expect(g.solidAt(GRID_W, 10)).toBe(true);
-    expect(g.solidAt(10, -1)).toBe(true);
-    expect(g.solidAt(10, GRID_H)).toBe(false);
+    expect(g.solidAt(-1, 10)).toBe(true); // left wall
+    expect(g.solidAt(GRID_W, 10)).toBe(true); // right wall
+    expect(g.solidAt(10, -1)).toBe(false); // no floor — falling below is lethal
+    expect(g.solidAt(10, GRID_H)).toBe(false); // sky
   });
 
   it("reports box collisions against the surface", () => {

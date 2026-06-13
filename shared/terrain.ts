@@ -120,10 +120,15 @@ export class TerrainGrid {
     return cx >= 0 && cx < this.w && cy >= 0 && cy < this.h;
   }
 
-  /** Out-of-bounds policy: side walls and floor are solid, sky is empty. */
+  /**
+   * Out-of-bounds policy: side walls are solid (tanks can't leave horizontally),
+   * but there is NO world floor — falling below the terrain is a lethal danger
+   * zone, and the sky is empty.
+   */
   solidAt(cx: number, cy: number): boolean {
-    if (cy >= this.h) return false;
-    if (cx < 0 || cx >= this.w || cy < 0) return true;
+    if (cy >= this.h) return false; // sky
+    if (cy < 0) return false; // bottomless pit (deadly)
+    if (cx < 0 || cx >= this.w) return true; // side walls
     return this.cells[cy * this.w + cx] === 1;
   }
 

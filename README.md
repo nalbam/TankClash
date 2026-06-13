@@ -200,6 +200,9 @@ Key constants live in `shared/constants.ts` and `shared/weapons.ts`:
 - Drilling can leave visually floating terrain chunks (the solidity grid has no
   connectivity/collapse pass); physics stays consistent since collision reads
   the same grid.
+- There is no world floor: falling through a fully-destroyed column is lethal (a
+  danger zone). Bots don't yet path around freshly-opened pits, so they can
+  occasionally fall in.
 - Bot aiming uses a closed-form ballistic solver (now weapon-aware via
   `gravityScale`) with light wind compensation; it is competent, not expert.
 - Headless screenshot FPS (~45) is measured under software WebGL (SwiftShader);

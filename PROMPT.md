@@ -118,7 +118,6 @@ Design for:
 * 2v2
 * free-for-all
 * spectators
-* replay recording later
 
 ---
 
@@ -635,7 +634,6 @@ After Milestone 2 feels good, add:
 * sudden death
 * gamepad support
 * better menus
-* replay recording foundation (optional — only if everything else is at target)
 
 ---
 

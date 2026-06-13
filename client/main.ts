@@ -94,6 +94,8 @@ async function boot() {
 
     // Players predict and send input; spectators just watch.
     if (!net.spectator) {
+      input.pollGamepad();
+
       // Reconcile prediction against the latest authoritative server patch.
       if (net.serverVersion !== reconciledVersion) {
         reconciledVersion = net.serverVersion;
@@ -105,8 +107,8 @@ async function boot() {
         }
       }
 
-      // Aim from the predicted local position for zero-latency feel.
-      if (predictor.active) {
+      // Aim from the predicted local position; mouse unless the pad's stick is active.
+      if (predictor.active && !input.gamepadAiming) {
         input.updateAim(followCam.camera, predictor.body.x, predictor.body.y);
       }
 
@@ -125,6 +127,16 @@ async function boot() {
       const weaponPick = input.consumeWeaponSelect();
       if (weaponPick !== null && SELECTABLE_WEAPONS[weaponPick]) {
         net.sendSelectWeapon(SELECTABLE_WEAPONS[weaponPick].id);
+      }
+      // Gamepad shoulder buttons cycle through the weapon list.
+      const cycle = input.consumeWeaponCycle();
+      const localWeapon = net.authoritative(net.sessionId)?.weapon;
+      if (cycle !== 0 && localWeapon) {
+        const idx = SELECTABLE_WEAPONS.findIndex((w) => w.id === localWeapon);
+        if (idx >= 0) {
+          const next = (idx + cycle + SELECTABLE_WEAPONS.length) % SELECTABLE_WEAPONS.length;
+          net.sendSelectWeapon(SELECTABLE_WEAPONS[next].id);
+        }
       }
     }
 

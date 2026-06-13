@@ -230,3 +230,25 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
 - Milestone 3 core complete: ten weapons, 2v2, spectator, lobby, round summary,
   per-weapon visuals. Not built: gamepad support and replay recording (the two
   optional/peripheral M3 items) — see Known Limitations.
+
+## Iteration 11 — 2026-06-13 (gamepad support)
+
+- Changed: added **gamepad support** to `InputManager` via the Gamepad API,
+  polled once per frame. Standard mapping: left stick / d-pad move, A jump, B
+  dash (edge), right trigger or X charge/fire, right stick aims (overrides the
+  mouse while pushed), LB/RB cycle weapons, Start restarts. Gamepad inputs merge
+  with keyboard/mouse, so either works; with no pad connected the poll early-
+  returns and nothing changes. Extracted the stick-mapping math (`stickToMove`,
+  `stickToAim`) into pure exported functions so it is unit-testable without a
+  physical pad or the DOM. (Replay recording was removed from the spec.)
+- Gates: typecheck PASS | tests PASS (49/49, +4 gamepad) | bot match PASS | screenshots OK
+- Measurements:
+  - `tests/gamepad.test.ts` — verifies stick→move past the deadzone, d-pad
+    fallback, right-stick→aim (world-y up, deadzone), the pure mapping the live
+    poll uses
+  - match:sim + keyboard/mouse screenshot gate both green (pad-absent path
+    unchanged)
+- Rubric deltas: no regressions; gamepad widens accessibility (input options).
+- Limitation: live testing needs a physical controller; only the pure mapping is
+  gate-covered. The full Milestone 3 feature set (minus the descoped replay
+  recording) is now complete.

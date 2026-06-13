@@ -72,9 +72,13 @@ SERVER_URL="game.example.com:2567" npm run build
 | `Shift` | dash |
 | Mouse | aim |
 | Left mouse | hold to charge, release to fire |
-| `1`–`5` | select weapon |
+| `1`–`9`, `0` | select weapon |
 | `Tab` | scoreboard |
 | `Enter` | restart (on the win screen) |
+
+A **gamepad** also works (standard mapping): left stick / d-pad move, A jump,
+B dash, right trigger charge/fire, right stick aim, LB/RB cycle weapons, Start
+restart. Keyboard/mouse and pad can be used interchangeably.
 
 The teal arc previews where your shot lands, accounting for the selected
 weapon, charge, and wind.
@@ -181,9 +185,10 @@ Key constants live in `shared/constants.ts` and `shared/weapons.ts`:
 
 ## Known limitations
 
-- Scope through Milestone 3 core: ten weapons, 1v1 / 2v2 / spectator, lobby,
-  round summary. Two peripheral M3 items are not built: **gamepad support** and
-  **replay recording** (the latter is optional in the spec).
+- Milestone 3 is complete: ten weapons, 1v1 / 2v2 / spectator, lobby, round
+  summary, gamepad support. (Replay recording was removed from the spec.)
+- Gamepad mapping is unit-tested but live controller testing needs a physical
+  pad; the keyboard/mouse path is what the screenshot gate exercises.
 - Prediction covers movement only; projectiles are server-spawned and shown via
   events, not locally predicted.
 - No rollback yet — the netcode is structured for it but does not implement it.

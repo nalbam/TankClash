@@ -45,6 +45,23 @@ describe("lobby flow", () => {
     expect(sim.state.players.get("h2")!.team).toBe("blue");
   });
 
+  it("assigns a joining human to the open human slot when bots already fill the other side", () => {
+    const sim = lobby(2); // cap = 1 per side
+    sim.addPlayer("h1", "H1", false); // → blue (host)
+    sim.addPlayer("b1", "BOT", true, false, "red"); // room bot-fills the other side
+    sim.addPlayer("h2", "H2", false); // must take the open human slot on red, not pile onto blue
+    expect(sim.state.players.get("h2")!.team).toBe("red");
+  });
+
+  it("returns a spectator to the side with the open human slot, not the bot-balanced one", () => {
+    const sim = lobby(2); // cap = 1 per side
+    sim.addPlayer("h1", "H1", false, false, "blue");
+    sim.addPlayer("b1", "BOT", true, false, "red"); // bot occupies the other side
+    sim.addPlayer("h2", "H2", false, true); // joins as a spectator
+    sim.setSpectator("h2", false); // rejoin as a fighter
+    expect(sim.state.players.get("h2")!.team).toBe("red");
+  });
+
   it("counts down 3s when all ready, 10s otherwise; only the host starts", () => {
     const ready = lobby();
     ready.addPlayer("h1", "H1", false, false, "blue");

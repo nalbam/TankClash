@@ -76,16 +76,13 @@ export class GameSim {
     if (wasHost) this.reassignHost();
   }
 
-  /** The team with fewer fighters (ties → blue), for balanced auto-assignment. */
+  /**
+   * The team with fewer human fighters (ties → blue), for balanced assignment.
+   * Bots are excluded: the room keeps both sides bot-filled to cap, so counting
+   * them would always look balanced and pile every human onto blue.
+   */
   private smallerTeam(): TeamId {
-    let blue = 0;
-    let red = 0;
-    this.state.players.forEach((p) => {
-      if (p.spectator) return;
-      if (p.team === "blue") blue++;
-      else red++;
-    });
-    return red < blue ? "red" : "blue";
+    return this.humanFighters("red") < this.humanFighters("blue") ? "red" : "blue";
   }
 
   /** Count fighters (non-spectators) currently on a team. */

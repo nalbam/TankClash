@@ -28,7 +28,7 @@ Passes with zero errors.
 npm test            # vitest run
 ```
 
-**69 tests** across nine files, covering the simulation's load-bearing logic:
+**71 tests** across nine files, covering the simulation's load-bearing logic:
 
 | File | Covers |
 | --- | --- |
@@ -38,7 +38,7 @@ npm test            # vitest run
 | `damage.test.ts` (6) | Splash falloff, direct-hit bonus, knockback, self-damage |
 | `weapons.test.ts` (6) | Per-weapon behavior (charge, spread, cluster split, drill pierce, pull, support) |
 | `match.test.ts` (4) | Round flow, sudden death, win detection, fall-death danger zone |
-| `lobby.test.ts` (14) | Lobby gating, team select caps, ready / host countdown (3s/10s), countdown→playing, host reassign, leave-to-spectate, ended→lobby, input / weapon guards, 2v2 spawn spread |
+| `lobby.test.ts` (16) | Lobby gating, team select caps, balanced join / rejoin assignment, ready / host countdown (3s/10s), countdown→playing, host reassign, leave-to-spectate, ended→lobby, input / weapon guards, 2v2 spawn spread |
 | `prediction.test.ts` (3) | Client prediction / reconciliation against authoritative state |
 | `gamepad.test.ts` (4) | Gamepad → `PlayerInput` mapping |
 

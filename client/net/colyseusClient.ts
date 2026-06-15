@@ -63,6 +63,8 @@ interface Snapshot {
 }
 
 const BUFFER_LIMIT = 40;
+/** Colyseus close code for a consented (client-initiated) `room.leave()`. */
+const CLOSE_CONSENTED = 4000;
 
 /**
  * Connection + snapshot interpolation. Every Colyseus patch is captured as a
@@ -146,6 +148,9 @@ export class NetClient {
     this.sessionId = "";
     this.connected = false;
     this.reconnecting = false;
+    // Explicit leave: forget the room so the consented-close `onLeave` (below)
+    // cannot trigger an auto-rejoin that would duplicate the player.
+    this.reconnectRoomId = "";
     this.snapshots = [];
   }
 
@@ -162,9 +167,11 @@ export class NetClient {
     room.onStateChange(() => this.captureSnapshot());
     room.onLeave((code) => {
       this.connected = false;
-      // Abnormal close (server/network drop): try to rejoin the same room.
-      // Normal close (code 1000, e.g. headless teardown or leaveRoom) does nothing.
-      if (code !== 1000) this.scheduleReconnect();
+      // Reconnect only on an *abnormal* drop (server/network loss). A consented
+      // close must NOT auto-rejoin — Colyseus uses 4000 for a client-initiated
+      // `room.leave()` and 1000 for a normal close; treating 4000 as abnormal
+      // made every explicit leave silently rejoin and duplicate the player.
+      if (code !== 1000 && code !== CLOSE_CONSENTED) this.scheduleReconnect();
     });
     room.onError(() => {
       this.connected = false;

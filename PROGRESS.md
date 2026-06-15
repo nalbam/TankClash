@@ -360,3 +360,27 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
     red) at once — previously only the nearest enemy stayed in view
 - Follow-up: a join-by-code input box / `?room=CODE` deep link would complete the
   share flow; deferred as a separate feature.
+
+## Iteration 16 — 2026-06-15 (fix duplicate player on leave-and-rejoin)
+
+- Symptom: leaving a room and rejoining left the player **duplicated**.
+- Root cause (client-only): Colyseus 0.16's consented `room.leave()` closes with
+  code **4000** (`CONSENTED`), not 1000. `bindRoom`'s `onLeave` treated any
+  `code !== 1000` as an abnormal drop and called `scheduleReconnect()`, so *every
+  explicit leave* armed an auto-rejoin — and `leaveRoom()` never cleared
+  `reconnectRoomId`, so 1.5 s later the client silently rejoined the same room.
+  When the user then rejoined manually, the auto-rejoined session and the manual
+  one both sat in the room → duplicate. The server was correct all along (it
+  drops the player on leave; measured humans → 0).
+- Fix: `onLeave` now reconnects only on a *truly* abnormal close
+  (`code !== 1000 && code !== CLOSE_CONSENTED(4000)`); `leaveRoom()` clears
+  `reconnectRoomId` so an explicit leave can never auto-rejoin. Genuine network
+  drops (e.g. 1006) still reconnect as before.
+- Gates: typecheck PASS | tests PASS (71/71) | bot match PASS | screenshots OK
+- Measurements:
+  - a raw-colyseus probe measured the consented-leave close code at **4000**, and
+    confirmed the server empties the room on leave (humans → 0)
+  - fix verified by driving the **real `NetClient`** (browser globals shimmed)
+    against a live server: Alice joins (humans = 2) → `leaveRoom()` → after 3.5 s
+    humans = **1**, i.e. no auto-rejoin; pre-fix this path left humans = 2
+- Scope: `client/net/colyseusClient.ts` only — no server change.

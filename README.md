@@ -113,7 +113,8 @@ burn ticks damage over time).
 
 ## Rooms, teams & ready-up
 
-The first screen lists open rooms. **Create** a 1v1 or 2v2 room, or click an
+The first screen lists open rooms. **Create** a 1v1 or 2v2 room — each gets a
+unique short **share code** shown on its row and in its lobby — or click an
 existing one to **join** (rooms already in battle are joined as a spectator).
 
 Inside a room's lobby you can:

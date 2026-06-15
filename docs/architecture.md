@@ -110,8 +110,8 @@ it stays reproducible).
 ### Schema
 
 `server/schema/` defines the Colyseus-synchronized state — `GameState`
-(phase, wind, round time, winner, host, countdown, the `players` and
-`projectiles` maps), `PlayerState` (incl. `ready` / `spectator`), and
+(phase, wind, round time, winner, host, countdown, the unique share `roomCode`,
+the `players` and `projectiles` maps), `PlayerState` (incl. `ready` / `spectator`), and
 `ProjectileState`. Networked rooms run `lobby → countdown → playing → ended →
 lobby`; the headless sim runs `waiting → playing → ended`. The lobby/ready/host
 logic is driven by `GameSim` (constructed with `{ lobbyMode: true }`) so the
@@ -125,8 +125,8 @@ at 5×`FIXED_DT` to avoid a spiral of death), sets the patch rate, routes client
 messages, and broadcasts drained events. It also owns the lobby policy:
 `reconcileBots` keeps each side filled to `fillTo / 2` (humans first, bots topping
 up — so a joining human displaces a bot), routes join/leave to player-vs-spectator
-slots, and publishes matchmaking metadata (mode / phase / occupancy / host) for
-the `GET /api/lobby` room browser. Bot AI brains live in the room; their
+slots, and publishes matchmaking metadata (mode / phase / occupancy / host /
+share code) for the `GET /api/lobby` room browser. Bot AI brains live in the room; their
 `PlayerState` lives in the sim.
 
 `server/bots/BotController` produces the **exact same `PlayerInput`** a human
@@ -150,8 +150,9 @@ The client renders interpolated state and never decides outcomes.
 
 - **Terrain** is drawn as chunked merged meshes that rebuild lazily only where
   craters land, generated from the same `TerrainGrid` the server uses.
-- **Camera** frames the local tank together with the nearest enemy, dynamically
-  zooming so both stay on screen, with cinematic shake on impacts.
+- **Camera** aims at the weighted midpoint of every living tank (biased toward
+  the local player) and zooms to fit how far they are spread across the arena,
+  with cinematic shake on impacts.
 - **Trajectory** previews the shot arc client-side using the exact server weapon
   constants, stopping at the terrain hit.
 - **Prediction** (`LocalPredictor`) renders the local tank with zero input

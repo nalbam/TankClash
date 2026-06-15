@@ -88,8 +88,10 @@ charge, and wind.
 
 ## Rooms & modes
 
-The first screen is a **room browser**. Create a **1v1** or **2v2** room, or
-click an open room to join (a room already in battle is joined as a spectator).
+The first screen is a **room browser**. Create a **1v1** or **2v2** room — each
+room gets a unique short **share code** shown on its browser row and at the top
+of its lobby — or click an open room to join (a room already in battle is joined
+as a spectator).
 Inside the room's lobby you pick a team (click the blue / red box) or spectate,
 ready up, and the **host** starts the match (3 s countdown if all ready, 10 s
 otherwise). Bots fill empty slots and a joining human replaces a bot.

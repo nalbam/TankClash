@@ -52,7 +52,8 @@ Message names are the `MSG` constants in `shared/types.ts`.
 
 Lobby state (host, ready flags, team, spectator, countdown) is carried by the
 **schema patches**, not discrete messages. The room browser reads open rooms
-from a `GET /api/lobby` matchmaking feed (mode / phase / occupancy / host).
+from a `GET /api/lobby` matchmaking feed (mode / phase / occupancy / host /
+share code).
 
 ### Server → client
 

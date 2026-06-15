@@ -25,6 +25,7 @@ export interface PlayerView {
   vy: number;
   lastSeq: number;
   aimAngle: number;
+  tilt: number;
   charging: boolean;
   charge: number;
   cooldown: number;
@@ -280,6 +281,7 @@ export class NetClient {
         vy: p.vy,
         lastSeq: p.lastSeq,
         aimAngle: p.aimAngle,
+        tilt: p.tilt,
         charging: p.charging,
         charge: p.charge,
         cooldown: p.cooldown,
@@ -334,7 +336,12 @@ export class NetClient {
         x: b.x + (a.x - b.x) * alpha,
         y: b.y + (a.y - b.y) * alpha,
         aimAngle: b.aimAngle + (a.aimAngle - b.aimAngle) * alpha,
+        tilt: b.tilt + (a.tilt - b.tilt) * alpha,
       });
+    }
+    // Players present only in the latest snapshot (just joined/respawned) still render.
+    for (const [id, a] of after.players) {
+      if (!players.has(id)) players.set(id, a);
     }
     const projectiles = new Map<string, ProjectileView>();
     for (const [id, b] of before.projectiles) {

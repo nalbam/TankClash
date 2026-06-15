@@ -9,9 +9,9 @@ export function layoutForSeed(seed: number): ArenaLayout {
   return ARENA_LAYOUTS[(seed >>> 8) % ARENA_LAYOUTS.length];
 }
 
-// Spawn columns (matches GameSim spawn at 18% / 82% of world width).
-const SPAWN_LX = Math.floor(WORLD_WIDTH * 0.18);
-const SPAWN_RX = Math.floor(WORLD_WIDTH * 0.82);
+// Spawn columns as CELL indices (GameSim spawns at world 18% / 82% of width).
+const SPAWN_LX = Math.floor((WORLD_WIDTH * 0.18) / CELL_SIZE);
+const SPAWN_RX = Math.floor((WORLD_WIDTH * 0.82) / CELL_SIZE);
 
 /**
  * Destructible 2D solidity grid — the authoritative terrain representation.
@@ -108,7 +108,7 @@ export class TerrainGrid {
     return heights;
   }
 
-  private static flattenAround(heights: number[], cx: number, radius = 6): void {
+  private static flattenAround(heights: number[], cx: number, radius = 10): void {
     const target = Math.max(heights[cx], Math.round((WORLD_HEIGHT / CELL_SIZE) * 0.2));
     for (let i = -radius; i <= radius; i++) {
       const x = cx + i;

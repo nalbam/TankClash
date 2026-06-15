@@ -31,7 +31,10 @@ export class VehicleRenderer {
       }
       tank.group.visible = view.alive;
       tank.group.position.set(view.x, view.y, 0);
-      tank.barrel.rotation.z = view.aimAngle;
+      // Tilt the whole tank to the terrain slope; offset the barrel so its
+      // absolute aim still matches view.aimAngle.
+      tank.group.rotation.z = view.tilt;
+      tank.barrel.rotation.z = view.aimAngle - view.tilt;
       // Lean slightly into aim direction for life.
       tank.body.rotation.z = Math.cos(view.aimAngle) * -0.04;
 
@@ -66,7 +69,12 @@ export class VehicleRenderer {
     if (!tank) return;
     this.group.remove(tank.group);
     tank.group.traverse((obj) => {
-      if (obj instanceof THREE.Mesh) obj.geometry.dispose();
+      if (obj instanceof THREE.Mesh) {
+        obj.geometry.dispose();
+        const mat = obj.material;
+        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+        else mat.dispose();
+      }
     });
     this.tanks.delete(id);
   }

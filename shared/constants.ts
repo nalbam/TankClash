@@ -26,9 +26,15 @@ export const VEHICLE = {
   DASH_SPEED: 35,
   DASH_COOLDOWN: 2.0,
   MAX_FALL: -60,
+  MAX_TILT: 0.6, // max body tilt on a slope (rad, ~34°)
+  TILT_RATE: 8, // how fast the body settles toward the slope tilt (rad/s)
 } as const;
 
 export const PLAYER_MAX_HEALTH = 100;
+
+// Barrel elevation limit, measured from the tank's surface normal: the gun can
+// aim across the upper hemisphere plus this much below the (tilted) horizon.
+export const AIM_BELOW_HORIZON = 0.26; // rad (~15°)
 
 // Wind
 export const WIND = {

@@ -11,6 +11,8 @@ export class PlayerState extends Schema {
   @type("number") vx = 0;
   @type("number") vy = 0;
   @type("number") aimAngle = 0;
+  /** Body tilt (rad) following the terrain slope; drives lean + aim limits. */
+  @type("number") tilt = 0;
   @type("boolean") charging = false;
   @type("number") charge = 0;
   @type("number") health = PLAYER_MAX_HEALTH;

@@ -55,7 +55,7 @@ function run(): void {
   let cratersThisRound = 0;
   let prevPhase = sim.state.phase as string;
   let simSecondsThisMatch = 0;
-  let pathBlockedObserved = false;
+  let solidsDropped = false;
   let prevSolid = sim.terrain.solidCount();
 
   const maxTicks = Math.ceil((MAX_SIM_SECONDS_PER_MATCH * (MATCHES_REQUIRED + 1)) / FIXED_DT);
@@ -74,7 +74,7 @@ function run(): void {
     kills += events.kills.length;
     cratersThisRound += events.craters.length;
     if (events.craters.length > 0 && sim.terrain.solidCount() < prevSolid) {
-      pathBlockedObserved = true; // terrain destruction verifiably changed the world
+      solidsDropped = true; // terrain destruction verifiably removed solid ground
     }
     prevSolid = sim.terrain.solidCount();
 
@@ -111,12 +111,13 @@ function run(): void {
   if (shotsFired === 0) fail("bots never fired");
   if (totalCraters === 0) fail("no terrain destruction occurred");
   if (kills === 0) fail("no kills occurred across all matches");
-  if (!pathBlockedObserved) fail("terrain destruction never changed the solid cell count");
+  if (!solidsDropped) fail("terrain destruction never changed the solid cell count");
   if (avgTick > AVG_TICK_BUDGET_MS) fail(`average tick ${avgTick.toFixed(3)}ms exceeds ${AVG_TICK_BUDGET_MS}ms budget`);
   if (maxTick > MAX_TICK_BUDGET_MS) fail(`max tick ${maxTick.toFixed(3)}ms exceeds ${MAX_TICK_BUDGET_MS}ms budget`);
 
+  const draws = results.filter((r) => r.winner === "draw").length;
   console.log("✅ MATCH SIM PASSED");
-  console.log(`   matches: ${results.length}`);
+  console.log(`   matches: ${results.length} (${draws} draw, ${results.length - draws} with a winner)`);
   results.forEach((r, i) =>
     console.log(`   match ${i + 1}: winner=${r.winner} duration=${r.durationS}s craters=${r.craters}`),
   );

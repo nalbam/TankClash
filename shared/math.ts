@@ -17,6 +17,11 @@ export function dist(x0: number, y0: number, x1: number, y1: number): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/** Normalize an angle to the equivalent value in (-π, π]. */
+export function wrapAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
+
 /** Deterministic PRNG (mulberry32). Same seed → same sequence. */
 export function createRng(seed: number): () => number {
   let a = seed >>> 0;

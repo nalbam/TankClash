@@ -147,3 +147,33 @@ describe("lobby flow", () => {
     expect(sim.fighterCount()).toBe(1);
   });
 });
+
+describe("GameSim input & weapon guards", () => {
+  it("ignores weapon selection outside the playing phase", () => {
+    const sim = lobby();
+    sim.addPlayer("h1", "H1", false, false, "blue");
+    const before = sim.state.players.get("h1")!.weapon;
+    sim.selectWeapon("h1", "mortar"); // still in the lobby
+    expect(sim.state.players.get("h1")!.weapon).toBe(before);
+  });
+
+  it("wraps an out-of-range aim angle to its equivalent direction", () => {
+    const sim = lobby();
+    sim.addPlayer("h1", "H1", false, false, "blue");
+    sim.setInput("h1", { seq: 1, aimAngle: 3.5 }); // > π
+    expect(sim.state.players.get("h1")!.input.aimAngle).toBeCloseTo(3.5 - 2 * Math.PI, 5);
+  });
+
+  it("spreads teammates' spawns apart when a 2v2 round starts", () => {
+    const sim = lobby(4);
+    sim.addPlayer("h1", "H1", false, false, "blue");
+    sim.addPlayer("h2", "H2", false, false, "blue");
+    sim.addPlayer("h3", "H3", false, false, "red");
+    sim.addPlayer("h4", "H4", false, false, "red");
+    for (const id of ["h1", "h2", "h3", "h4"]) sim.setReady(id, true);
+    sim.requestStart("h1");
+    tickUntil(sim, "playing");
+    const gap = Math.abs(sim.state.players.get("h1")!.x - sim.state.players.get("h2")!.x);
+    expect(gap).toBeGreaterThan(3); // clearly separated (spacing ~6u)
+  });
+});

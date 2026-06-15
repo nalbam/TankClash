@@ -14,6 +14,11 @@ import { spawnProjectile, stepWeapon } from "./systems/weaponSystem";
 import { carveCrater } from "./systems/terrainSystem";
 import { stepWind, type WindRuntime } from "./systems/windSystem";
 
+/** Spawn jitter (world units) — must stay within the flattened landing pad. */
+export const SPAWN_JITTER = 3;
+/** Horizontal gap between teammates' spawns (world units); keep within the pad. */
+export const TEAM_SPAWN_SPACING = 6;
+
 /**
  * Authoritative game simulation. Pure of any networking concern so the same
  * code drives the Colyseus room and the headless verification harness.
@@ -135,7 +140,9 @@ export class GameSim {
       right: m.right === true,
       jump: m.jump === true,
       dash: m.dash === true,
-      aimAngle: Number.isFinite(aim) ? clamp(aim, -Math.PI, Math.PI) : p.input.aimAngle,
+      // Wrap (not clamp) to the equivalent angle in (-π, π] so an un-normalized
+      // angle from a client maps to the correct direction instead of being pinned.
+      aimAngle: Number.isFinite(aim) ? Math.atan2(Math.sin(aim), Math.cos(aim)) : p.input.aimAngle,
       charging: m.charging === true,
     };
     p.input = input;
@@ -226,8 +233,9 @@ export class GameSim {
     }
   }
 
-  /** Switch the active weapon (ignored mid-charge or for non-selectable ids). */
+  /** Switch the active weapon (ignored outside play, mid-charge, or non-selectable ids). */
   selectWeapon(id: string, weaponId: string): void {
+    if (this.state.phase !== "playing") return;
     const p = this.state.players.get(id);
     if (!p || !p.alive || p.charging) return;
     const def = WEAPONS[weaponId];
@@ -366,12 +374,23 @@ export class GameSim {
   }
 
   private spawnPlayer(p: PlayerState): void {
+    // Spread teammates apart along the pad; a lone fighter gets random jitter.
+    const mates: PlayerState[] = [];
+    this.state.players.forEach((q) => {
+      if (!q.spectator && q.team === p.team) mates.push(q);
+    });
+    const idx = Math.max(0, mates.indexOf(p));
+    const offset =
+      mates.length > 1
+        ? (idx - (mates.length - 1) / 2) * TEAM_SPAWN_SPACING
+        : randRange(this.rng, -SPAWN_JITTER, SPAWN_JITTER);
     const baseX = p.team === "blue" ? WORLD_WIDTH * 0.18 : WORLD_WIDTH * 0.82;
-    const x = clamp(baseX + randRange(this.rng, -8, 8), VEHICLE.HALF_W + 2, WORLD_WIDTH - VEHICLE.HALF_W - 2);
+    const x = clamp(baseX + offset, VEHICLE.HALF_W + 2, WORLD_WIDTH - VEHICLE.HALF_W - 2);
     p.x = x;
     p.y = this.terrain.surfaceY(x) + VEHICLE.HALF_H + 0.2;
     p.vx = 0;
     p.vy = 0;
+    p.tilt = 0;
     p.health = PLAYER_MAX_HEALTH;
     p.alive = true;
     p.charge = 0;

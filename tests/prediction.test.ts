@@ -23,6 +23,7 @@ function makeBody(x: number, y: number): VehicleBody {
     vy: 0,
     grounded: false,
     dashCooldown: 0,
+    tilt: 0,
     input: { seq: 0, left: false, right: false, jump: false, dash: false, aimAngle: 0, charging: false },
   };
 }
@@ -46,6 +47,7 @@ function viewFromBody(body: VehicleBody, lastSeq: number): PlayerView {
     vy: body.vy,
     lastSeq,
     aimAngle: 0,
+    tilt: 0,
     charging: false,
     charge: 0,
     cooldown: 0,

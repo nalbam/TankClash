@@ -19,6 +19,7 @@ export class LocalPredictor {
     vy: 0,
     grounded: false,
     dashCooldown: 0,
+    tilt: 0,
     input: { seq: 0, left: false, right: false, jump: false, dash: false, aimAngle: 0, charging: false },
   };
   active = false;
@@ -31,6 +32,7 @@ export class LocalPredictor {
     this.body.y = view.y;
     this.body.vx = view.vx;
     this.body.vy = view.vy;
+    this.body.tilt = view.tilt;
     this.body.dashCooldown = 0;
     this.pending = [];
     this.active = true;

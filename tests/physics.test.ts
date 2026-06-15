@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FIXED_DT, GRAVITY, GRID_W, VEHICLE } from "../shared/constants";
+import { AIM_BELOW_HORIZON, FIXED_DT, GRAVITY, GRID_H, GRID_W, VEHICLE } from "../shared/constants";
+import { clampAimToTilt, terrainTilt } from "../shared/physics";
 import { TerrainGrid } from "../shared/terrain";
 import { CANNON } from "../shared/weapons";
 import { PlayerState } from "../server/schema/PlayerState";
@@ -160,5 +161,39 @@ describe("vehicle physics", () => {
     expect(Number.isFinite(p.y)).toBe(true);
     expect(Number.isFinite(p.vx)).toBe(true);
     expect(Number.isFinite(p.vy)).toBe(true);
+  });
+
+  it("settles tilt to level on flat ground", () => {
+    const terrain = flatTerrain(20);
+    const p = makePlayer(100, 20 + VEHICLE.HALF_H + 0.05);
+    for (let i = 0; i < 30; i++) stepVehicle(p, terrain, FIXED_DT);
+    expect(p.tilt).toBeCloseTo(0, 4);
+  });
+});
+
+describe("tilt & aim limits", () => {
+  it("terrainTilt: level on flat ground, clamped on a steep rightward slope", () => {
+    expect(terrainTilt(flatTerrain(20), 100)).toBeCloseTo(0, 6);
+
+    // 1 cell of rise per cell to the right → ~45°, clamped to MAX_TILT.
+    const cliff = new TerrainGrid();
+    for (let cx = 0; cx < GRID_W; cx++) {
+      const h = Math.min(GRID_H - 1, cx);
+      for (let cy = 0; cy < h; cy++) cliff.cells[cy * GRID_W + cx] = 1;
+    }
+    expect(terrainTilt(cliff, 40)).toBeCloseTo(VEHICLE.MAX_TILT, 6);
+  });
+
+  it("clampAimToTilt: level tank allows upward aim, limits steep downward aim", () => {
+    expect(clampAimToTilt(Math.PI / 2, 0)).toBeCloseTo(Math.PI / 2, 6); // straight up
+    expect(clampAimToTilt(-0.2, 0)).toBeCloseTo(-0.2, 6); // shallow down within margin
+    expect(clampAimToTilt(-0.8, 0)).toBeCloseTo(-AIM_BELOW_HORIZON, 4); // steep down clamped
+  });
+
+  it("clampAimToTilt: tilting the tank rotates the reachable arc", () => {
+    // Flat-right (0) passes on level ground but is nudged up on an uphill tilt,
+    // because the downhill limit rotates with the tank.
+    expect(clampAimToTilt(0, 0)).toBeCloseTo(0, 6);
+    expect(clampAimToTilt(0, 0.3)).toBeGreaterThan(0);
   });
 });

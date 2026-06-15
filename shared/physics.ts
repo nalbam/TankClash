@@ -1,5 +1,5 @@
-import { GRAVITY, VEHICLE, WORLD_WIDTH } from "./constants";
-import { clamp, moveToward } from "./math";
+import { AIM_BELOW_HORIZON, GRAVITY, VEHICLE, WORLD_WIDTH } from "./constants";
+import { clamp, moveToward, wrapAngle } from "./math";
 import type { TerrainGrid } from "./terrain";
 import type { PlayerInput } from "./types";
 
@@ -17,11 +17,32 @@ export interface VehicleBody {
   vy: number;
   grounded: boolean;
   dashCooldown: number;
+  /** Body tilt (rad) following the terrain slope; 0 = level. */
+  tilt: number;
   input: PlayerInput;
 }
 
 export function isGrounded(b: VehicleBody, terrain: TerrainGrid): boolean {
   return !terrain.boxFree(b.x, b.y - 0.1, VEHICLE.HALF_W * 0.95, VEHICLE.HALF_H);
+}
+
+/** Slope tilt under the vehicle from the terrain surface across its width. */
+export function terrainTilt(terrain: TerrainGrid, x: number): number {
+  const d = VEHICLE.HALF_W;
+  const slope = terrain.surfaceY(x + d) - terrain.surfaceY(x - d);
+  return clamp(Math.atan2(slope, 2 * d), -VEHICLE.MAX_TILT, VEHICLE.MAX_TILT);
+}
+
+/**
+ * Limit a desired aim angle to the barrel's reach: the upper hemisphere of the
+ * tank's surface (normal = tilt + π/2) plus AIM_BELOW_HORIZON below the tilted
+ * horizon. Tilting the tank rotates the whole reachable arc with it.
+ */
+export function clampAimToTilt(aim: number, tilt: number): number {
+  const normal = tilt + Math.PI / 2;
+  const rel = wrapAngle(aim - normal);
+  const limit = Math.PI / 2 + AIM_BELOW_HORIZON;
+  return wrapAngle(normal + clamp(rel, -limit, limit));
 }
 
 /** Vehicle movement: acceleration, friction, gravity, jump, dash, slope step-up. */
@@ -100,4 +121,8 @@ export function stepVehicle(b: VehicleBody, terrain: TerrainGrid, dt: number): v
 
   b.x = clamp(b.x, VEHICLE.HALF_W, WORLD_WIDTH - VEHICLE.HALF_W);
   b.grounded = isGrounded(b, terrain);
+
+  // Settle the body toward the slope tilt (level out while airborne).
+  const targetTilt = b.grounded ? terrainTilt(terrain, b.x) : 0;
+  b.tilt = moveToward(b.tilt, targetTilt, VEHICLE.TILT_RATE * dt);
 }

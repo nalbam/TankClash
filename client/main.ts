@@ -1,5 +1,6 @@
 import { CANNON, SELECTABLE_WEAPONS, WEAPONS } from "@shared/weapons";
 import { MATCH, WORLD_HEIGHT, WORLD_WIDTH } from "@shared/constants";
+import { clampAimToTilt } from "@shared/physics";
 import { AudioManager } from "./audio/audio";
 import { InputManager } from "./input/input";
 import { NetClient, type PlayerView } from "./net/colyseusClient";
@@ -310,6 +311,7 @@ async function boot() {
     if (predictor.active && local) {
       local.x = predictor.body.x;
       local.y = predictor.body.y;
+      local.tilt = predictor.body.tilt;
     }
 
     const localDef = (local && WEAPONS[local.weapon]) || CANNON;
@@ -344,7 +346,7 @@ async function boot() {
       localDef,
       local?.x ?? 0,
       local?.y ?? 0,
-      input.aimAngle,
+      clampAimToTilt(input.aimAngle, local?.tilt ?? 0),
       input.charging ? Math.max(predictedCharge, 0.05) : 0.3,
       state?.wind ?? 0,
       net.terrain,

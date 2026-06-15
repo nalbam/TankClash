@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CELL_SIZE, GRID_H, GRID_W, WORLD_WIDTH } from "../shared/constants";
 import { ARENA_LAYOUTS, layoutForSeed, TerrainGrid } from "../shared/terrain";
+import { SPAWN_JITTER } from "../server/GameSim";
 
 describe("TerrainGrid", () => {
   it("generates identical terrain for the same seed (client/server determinism)", () => {
@@ -80,6 +81,22 @@ describe("arena layouts", () => {
       // Both spawn columns must have ground to stand on.
       expect(g.surfaceY(spawnL)).toBeGreaterThan(2);
       expect(g.surfaceY(spawnR)).toBeGreaterThan(2);
+    }
+  });
+
+  it("keeps the spawn jitter range flat so tanks land on a level pad", () => {
+    // The flattened pad must align with GameSim's spawn (world 18%/82%) AND
+    // cover the full spawn jitter range — guarding the cell/world unit mismatch.
+    const seedFor = (idx: number) => (idx << 8) | 0x11;
+    for (let i = 0; i < ARENA_LAYOUTS.length; i++) {
+      const g = TerrainGrid.generate(seedFor(i));
+      for (const center of [WORLD_WIDTH * 0.18, WORLD_WIDTH * 0.82]) {
+        const padY = g.surfaceY(center);
+        expect(padY).toBeGreaterThan(2); // real ground, not a chasm/void
+        for (let dx = -SPAWN_JITTER; dx <= SPAWN_JITTER; dx += CELL_SIZE) {
+          expect(g.surfaceY(center + dx)).toBe(padY); // level across the whole pad
+        }
+      }
     }
   });
 });

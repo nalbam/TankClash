@@ -1,5 +1,6 @@
 import { GRAVITY } from "../../shared/constants";
 import { clamp, createRng, dist, randRange } from "../../shared/math";
+import { clampAimToTilt } from "../../shared/physics";
 import type { PlayerInput } from "../../shared/types";
 import { WEAPONS } from "../../shared/weapons";
 import type { GameSim } from "../GameSim";
@@ -187,7 +188,7 @@ export class BotController {
     if (!solution) {
       this.hasSolution = false;
       // Lob hopefully toward the enemy anyway.
-      this.input.aimAngle = enemy.x >= me.x ? 1.0 : Math.PI - 1.0;
+      this.input.aimAngle = clampAimToTilt(enemy.x >= me.x ? 1.0 : Math.PI - 1.0, me.tilt);
       this.desiredCharge = randRange(this.rng, 0.4, 0.9);
       this.hasSolution = this.rng() < 0.5;
       return;
@@ -196,7 +197,7 @@ export class BotController {
     // Imperfection: bots occasionally miss.
     const angleNoise = randRange(this.rng, -0.06, 0.06);
     const chargeNoise = randRange(this.rng, -0.05, 0.05);
-    this.input.aimAngle = clamp(solution.angle + angleNoise, -Math.PI, Math.PI);
+    this.input.aimAngle = clampAimToTilt(solution.angle + angleNoise, me.tilt);
     this.desiredCharge = clamp(
       (solution.speed - def.minSpeed) / (def.maxSpeed - def.minSpeed) + chargeNoise,
       0.05,

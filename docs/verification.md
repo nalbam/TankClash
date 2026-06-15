@@ -52,11 +52,12 @@ Runs the authoritative `GameSim` with two bots — **no networking, no
 rendering** — possible only because the simulation is networking-free. It plays
 **3 consecutive matches** and asserts:
 
-- the match runs to completion and a winner is declared;
+- the match runs to completion and a result is decided (a winner, or a draw on
+  simultaneous death);
 - no crash, no unhandled rejection;
 - no `NaN` / `Infinity` in any position, velocity, or health value;
 - terrain destruction events are applied consistently (the solid cell count
-  actually drops and reroutes bots);
+  actually drops as craters land);
 - server tick duration stays under budget (avg < 5 ms, max < 33 ms) — no death
   spiral.
 
@@ -70,7 +71,7 @@ npm run screenshot  # tsx scripts/screenshot.ts
 ```
 
 Launches server + client headlessly with **Playwright** (Chromium) and walks the
-full flow with two pages: a solo `?autostart` match (in-game frames at t=2/10/30 s
+full flow with two pages: a solo `?autostart` match (in-game frames at t=2/6/10 s
 plus a solo-pause freeze check), then a host+joiner lobby that captures the **room
 browser**, the **lobby** (teams / ready / host), the host **countdown**, a live
 **2v2 match**, and **leave-to-spectate**. The 3D frames must show a rendered

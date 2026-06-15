@@ -1,5 +1,6 @@
 import { VEHICLE } from "../../shared/constants";
 import { clamp } from "../../shared/math";
+import { clampAimToTilt } from "../../shared/physics";
 import { WEAPONS, type WeaponDef } from "../../shared/weapons";
 import type { PlayerState } from "../schema/PlayerState";
 import { ProjectileState } from "../schema/ProjectileState";
@@ -42,7 +43,7 @@ export function stepWeapon(
   const def = WEAPONS[p.weapon];
   if (!def || !p.alive) return;
 
-  p.aimAngle = p.input.aimAngle;
+  p.aimAngle = clampAimToTilt(p.input.aimAngle, p.tilt);
 
   if (p.input.charging) {
     if (p.cooldown <= 0) {

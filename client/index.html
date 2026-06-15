@@ -157,12 +157,12 @@
       .lobby-teams { display: flex; gap: 24px; align-items: flex-start; }
       .team-col { min-width: 200px; min-height: 120px; padding: 12px; border-radius: 10px;
         background: rgba(255,255,255,0.04); border: 1px solid rgba(45,212,191,0.25); }
-      #lobby-blue, #lobby-red { cursor: pointer; transition: background 0.12s, border-color 0.12s; }
-      #lobby-blue:hover, #lobby-red:hover { background: rgba(45,212,191,0.12); border-color: var(--teal); }
-      #lobby-blue.locked, #lobby-red.locked { cursor: default; }
-      #lobby-blue.locked:hover, #lobby-red.locked:hover { background: rgba(255,255,255,0.04); border-color: rgba(45,212,191,0.25); }
+      #lobby-blue, #lobby-red, #lobby-spectators { cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+      #lobby-blue:hover, #lobby-red:hover, #lobby-spectators:hover { background: rgba(45,212,191,0.12); border-color: var(--teal); }
+      #lobby-blue.locked, #lobby-red.locked, #lobby-spectators.locked { cursor: default; }
+      #lobby-blue.locked:hover, #lobby-red.locked:hover, #lobby-spectators.locked:hover { background: rgba(255,255,255,0.04); border-color: rgba(45,212,191,0.25); }
       .team-head { font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; font-size: 13px; }
-      #lobby-spectators:empty { display: none; }
+      #lobby-spectators { min-height: 56px; }
       .slot { font-size: 14px; padding: 4px 2px; display: flex; justify-content: space-between; }
       .slot.me { color: var(--teal); }
       .slot.empty { color: rgba(241,233,210,0.35); }
@@ -281,10 +281,9 @@
         <div id="lobby-blue" class="team-col"></div>
         <div id="lobby-red" class="team-col"></div>
       </div>
-      <div id="lobby-spectators" class="team-col" style="border:none;background:none;min-height:0"></div>
+      <div id="lobby-spectators" class="team-col"></div>
       <div class="lobby-actions">
         <button id="lobby-ready">READY</button>
-        <button id="lobby-spectate">SPECTATE</button>
         <button id="lobby-start">START</button>
         <button id="lobby-leave">LEAVE</button>
       </div>

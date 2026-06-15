@@ -12,7 +12,7 @@ export interface BrowserCallbacks {
 export interface LobbyCallbacks {
   onReadyToggle: () => void;
   onSelectTeam: (team: "blue" | "red") => void;
-  onSpectateToggle: () => void;
+  onSpectate: () => void;
   onStart: () => void;
   onLeave: () => void;
 }
@@ -42,7 +42,6 @@ export class LobbyUI {
   private redCol = el<HTMLDivElement>("lobby-red");
   private specCol = el<HTMLDivElement>("lobby-spectators");
   private readyBtn = el<HTMLButtonElement>("lobby-ready");
-  private spectateBtn = el<HTMLButtonElement>("lobby-spectate");
   private startBtn = el<HTMLButtonElement>("lobby-start");
   private leaveBtn = el<HTMLButtonElement>("lobby-leave");
   private countdownEl = el<HTMLDivElement>("lobby-countdown");
@@ -63,7 +62,10 @@ export class LobbyUI {
     this.redCol.addEventListener("click", () => {
       if (!this.counting) lobbyCbs.onSelectTeam("red");
     });
-    this.spectateBtn.addEventListener("click", () => lobbyCbs.onSpectateToggle());
+    // Clicking the spectator box drops to watching (rejoin a team via a team box).
+    this.specCol.addEventListener("click", () => {
+      if (!this.counting) lobbyCbs.onSpectate();
+    });
     this.startBtn.addEventListener("click", () => lobbyCbs.onStart());
     this.leaveBtn.addEventListener("click", () => lobbyCbs.onLeave());
   }
@@ -136,18 +138,19 @@ export class LobbyUI {
     });
     this.blueCol.innerHTML = `<div class="team-head team-blue">BLUE</div>${blue.join("") || '<div class="slot empty">— open —</div>'}`;
     this.redCol.innerHTML = `<div class="team-head team-red">RED</div>${red.join("") || '<div class="slot empty">— open —</div>'}`;
-    this.specCol.innerHTML = specs.length
-      ? `<div class="team-head">SPECTATORS</div>${specs.join("")}`
-      : "";
+    this.specCol.innerHTML = `<div class="team-head">SPECTATORS</div>${
+      specs.join("") || '<div class="slot empty">— click to spectate —</div>'
+    }`;
 
     const watching = !me || me.spectator === true;
     const isHost = sessionId === state.hostId;
     const counting = state.phase === "countdown";
     this.counting = counting;
 
-    // Team boxes are clickable in the lobby, locked during the countdown.
+    // Team / spectator boxes are clickable in the lobby, locked during the countdown.
     this.blueCol.classList.toggle("locked", counting);
     this.redCol.classList.toggle("locked", counting);
+    this.specCol.classList.toggle("locked", counting);
 
     this.countdownEl.style.display = counting ? "block" : "none";
     if (counting) this.countdownEl.textContent = `STARTING IN ${Math.ceil(state.countdown)}`;
@@ -158,8 +161,6 @@ export class LobbyUI {
     this.readyBtn.style.display = showActions && !watching ? "" : "none";
     this.readyBtn.textContent = me?.ready ? "CANCEL" : "READY";
     this.readyBtn.classList.toggle("on", Boolean(me?.ready));
-    this.spectateBtn.style.display = showActions ? "" : "none";
-    this.spectateBtn.textContent = watching ? "JOIN GAME" : "SPECTATE";
     this.startBtn.style.display = showActions && isHost ? "" : "none";
     this.leaveBtn.style.display = showActions ? "" : "none";
   }

@@ -143,7 +143,7 @@ async function boot() {
         net.sendReady(!(me?.ready ?? false));
       },
       onSelectTeam: (team) => net.sendSelectTeam(team),
-      onSpectateToggle: () => net.sendSpectator(!net.watching),
+      onSpectate: () => net.sendSpectator(true),
       onStart: () => net.sendStart(),
       onLeave: () => enterBrowser(),
     },

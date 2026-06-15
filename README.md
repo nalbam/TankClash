@@ -80,7 +80,7 @@ SERVER_URL="game.example.com:2567" npm run build
 | Left mouse | hold to charge, release to fire |
 | `1`–`9`, `0` | select weapon |
 | `Tab` | scoreboard |
-| `Enter` | restart (on the win screen) |
+| `Enter` | skip to lobby (on the win screen) |
 | `Esc` | pause menu (resume / leave match → spectate; spectators leave the room) |
 
 A **gamepad** also works (standard mapping): left stick / d-pad move, A jump,
@@ -118,7 +118,7 @@ existing one to **join** (rooms already in battle are joined as a spectator).
 
 Inside a room's lobby you can:
 
-- switch **team** (blue / red) or drop to **spectate**;
+- switch **team** by clicking the blue / red box, or drop to **spectate**;
 - toggle **ready**;
 - **leave** back to the browser.
 

@@ -76,7 +76,7 @@ See [`.env.example`](../.env.example) for the canonical environment variables.
 | Left mouse | hold to charge, release to fire |
 | `1`–`9`, `0` | select weapon |
 | `Tab` | scoreboard |
-| `Enter` | restart (on the win screen) |
+| `Enter` | skip to lobby (on the win screen) |
 | `Esc` | pause menu (resume / quit to lobby) |
 
 A **gamepad** also works (standard mapping): left stick / d-pad move, A jump,
@@ -90,9 +90,9 @@ charge, and wind.
 
 The first screen is a **room browser**. Create a **1v1** or **2v2** room, or
 click an open room to join (a room already in battle is joined as a spectator).
-Inside the room's lobby you pick a team or spectate, ready up, and the **host**
-starts the match (3 s countdown if all ready, 10 s otherwise). Bots fill empty
-slots and a joining human replaces a bot.
+Inside the room's lobby you pick a team (click the blue / red box) or spectate,
+ready up, and the **host** starts the match (3 s countdown if all ready, 10 s
+otherwise). Bots fill empty slots and a joining human replaces a bot.
 
 Leaving mid-match kills your tank and turns you into a spectator; `Esc` while
 spectating opens a menu to leave the room. A solo/bot match can still be frozen

@@ -22,6 +22,7 @@ interface LobbyState {
   phase: string;
   hostId: string;
   countdown: number;
+  roomCode: string;
   players: { forEach: (cb: (p: any, id: string) => void) => void };
 }
 
@@ -38,6 +39,7 @@ export class LobbyUI {
 
   private lobby = el<HTMLDivElement>("lobby");
   private title = el<HTMLDivElement>("lobby-title");
+  private code = el<HTMLDivElement>("lobby-code");
   private blueCol = el<HTMLDivElement>("lobby-blue");
   private redCol = el<HTMLDivElement>("lobby-red");
   private specCol = el<HTMLDivElement>("lobby-spectators");
@@ -103,7 +105,7 @@ export class LobbyUI {
         r.phase === "lobby" ? "in lobby" : r.phase === "countdown" ? "starting" : r.phase === "ended" ? "round over" : "in battle";
       row.innerHTML =
         `<div class="room-info">` +
-        `<span class="room-mode">${r.mode.toUpperCase()}</span>` +
+        `<span class="room-mode">${r.mode.toUpperCase()}${r.code ? ` <span class="room-code">${r.code}</span>` : ""}</span>` +
         `<span class="room-host">${r.host || "—"}</span>` +
         `<span class="room-meta">${r.humans}/${r.capacity} players · ${phaseLabel}</span>` +
         `</div><span class="room-join ${open ? "open" : "watch"}">${status}</span>`;
@@ -155,6 +157,7 @@ export class LobbyUI {
     this.countdownEl.style.display = counting ? "block" : "none";
     if (counting) this.countdownEl.textContent = `STARTING IN ${Math.ceil(state.countdown)}`;
     this.title.textContent = counting ? "GET READY" : "LOBBY";
+    this.code.textContent = state.roomCode ? `ROOM CODE · ${state.roomCode}` : "";
 
     // Action buttons are hidden during the countdown (leaving is locked).
     const showActions = !counting;

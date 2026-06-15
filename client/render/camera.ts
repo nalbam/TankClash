@@ -3,8 +3,8 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared/constants";
 import { clamp } from "@shared/math";
 
 const CAMERA_Z_MIN = 70;
-const CAMERA_Z_MAX = 135;
-const FRAME_MARGIN = 24; // world units kept around both tanks
+const CAMERA_Z_MAX = 165;
+const FRAME_MARGIN = 24; // world units kept around the framed tanks
 
 export class FollowCamera {
   readonly camera: THREE.PerspectiveCamera;
@@ -30,31 +30,24 @@ export class FollowCamera {
   }
 
   /**
-   * Follow the local tank while keeping the nearest enemy in frame:
-   * the camera aims at a weighted midpoint and zooms out with distance.
+   * Frame a group of tanks: aim at their (caller-computed, local-weighted)
+   * midpoint and zoom out to fit the spread. `spanX/Y` is the half-extent that
+   * must stay in frame — the largest distance from the midpoint to any tank.
    */
   update(
     focusX: number,
     focusY: number,
+    spanX: number,
+    spanY: number,
     aimLeadX: number,
     dt: number,
-    enemy?: { x: number; y: number } | null,
   ): void {
-    if (enemy) {
-      // Weighted midpoint (bias toward the local tank).
-      this.targetX = focusX * 0.62 + enemy.x * 0.38 + aimLeadX * 4;
-      this.targetY = Math.max(focusY, (focusY + enemy.y) / 2) + 6;
-      const spanX = Math.abs(enemy.x - focusX) / 2 + FRAME_MARGIN;
-      const spanY = Math.abs(enemy.y - focusY) / 2 + FRAME_MARGIN * 0.6;
-      const tanHalf = Math.tan((this.camera.fov * Math.PI) / 360);
-      const zForWidth = spanX / (tanHalf * this.camera.aspect);
-      const zForHeight = spanY / tanHalf;
-      this.targetZ = clamp(Math.max(zForWidth, zForHeight), CAMERA_Z_MIN, CAMERA_Z_MAX);
-    } else {
-      this.targetX = focusX + aimLeadX * 6;
-      this.targetY = focusY + 8;
-      this.targetZ = CAMERA_Z_MIN + 20;
-    }
+    this.targetX = focusX + aimLeadX * 4;
+    this.targetY = focusY + 6;
+    const tanHalf = Math.tan((this.camera.fov * Math.PI) / 360);
+    const zForWidth = (spanX + FRAME_MARGIN) / (tanHalf * this.camera.aspect);
+    const zForHeight = (spanY + FRAME_MARGIN * 0.6) / tanHalf;
+    this.targetZ = clamp(Math.max(zForWidth, zForHeight), CAMERA_Z_MIN, CAMERA_Z_MAX);
 
     const halfH = Math.tan((this.camera.fov * Math.PI) / 360) * this.targetZ;
     const halfW = halfH * this.camera.aspect;

@@ -39,6 +39,7 @@ Thumbs.db
 .idea/
 .vscode/
 .claude/
+.prompt.md
 *.swp
 *.swo
 *~

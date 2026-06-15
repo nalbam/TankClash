@@ -6,13 +6,24 @@ const TEAM_COLORS: Record<string, number> = {
   red: 0xff5d5d,
 };
 
+const ACCENT_COLOR = 0x2dd4bf;
+/** Scorched hull tint a dead tank takes on. */
+const WRECK_COLOR = 0x2b2b2b;
+/** Extra list (rad) added to the terrain tilt so a wreck reads as toppled. */
+const WRECK_LEAN = 0.5;
+/** Barrel hangs down (rad, group-local) once the crew is gone. */
+const WRECK_BARREL_DROOP = -0.6;
+
 interface TankView {
   group: THREE.Group;
   barrel: THREE.Group;
   chargeGlow: THREE.Mesh;
   shieldBubble: THREE.Mesh;
   body: THREE.Mesh;
+  strip: THREE.Mesh;
+  baseColor: number;
   team: string;
+  dead: boolean;
 }
 
 /** 3D tank models synced from interpolated player views. */
@@ -29,38 +40,71 @@ export class VehicleRenderer {
         this.tanks.set(id, tank);
         this.group.add(tank.group);
       }
-      tank.group.visible = view.alive;
+      // A dead tank stays on the field as a wreck instead of vanishing.
+      tank.group.visible = true;
       tank.group.position.set(view.x, view.y, 0);
-      // Tilt the whole tank to the terrain slope; offset the barrel so its
-      // absolute aim still matches view.aimAngle.
-      tank.group.rotation.z = view.tilt;
-      tank.barrel.rotation.z = view.aimAngle - view.tilt;
-      // Lean slightly into aim direction for life.
-      tank.body.rotation.z = Math.cos(view.aimAngle) * -0.04;
+      this.setDead(tank, !view.alive);
 
-      const glow = tank.chargeGlow.material as THREE.MeshBasicMaterial;
-      if (view.charging) {
-        const s = 0.3 + view.charge * 1.1;
-        tank.chargeGlow.scale.setScalar(s);
-        glow.opacity = 0.35 + view.charge * 0.6;
-        tank.chargeGlow.visible = true;
+      if (view.alive) {
+        // Tilt the whole tank to the terrain slope; offset the barrel so its
+        // absolute aim still matches view.aimAngle.
+        tank.group.rotation.z = view.tilt;
+        tank.barrel.rotation.z = view.aimAngle - view.tilt;
+        // Lean slightly into aim direction for life.
+        tank.body.rotation.z = Math.cos(view.aimAngle) * -0.04;
+
+        const glow = tank.chargeGlow.material as THREE.MeshBasicMaterial;
+        if (view.charging) {
+          const s = 0.3 + view.charge * 1.1;
+          tank.chargeGlow.scale.setScalar(s);
+          glow.opacity = 0.35 + view.charge * 0.6;
+          tank.chargeGlow.visible = true;
+        } else {
+          tank.chargeGlow.visible = false;
+        }
+
+        // Shield bubble + burn tint reflect status effects.
+        tank.shieldBubble.visible = view.shieldTime > 0;
+        const bodyMat = tank.body.material as THREE.MeshStandardMaterial;
+        if (view.burnTime > 0) {
+          bodyMat.emissive.setHex(0xff4400);
+          bodyMat.emissiveIntensity = 0.6;
+        } else {
+          bodyMat.emissiveIntensity = 0;
+        }
       } else {
+        // Wreck: list to one side, barrel drooped, all effects off.
+        tank.group.rotation.z = view.tilt - WRECK_LEAN;
+        tank.barrel.rotation.z = WRECK_BARREL_DROOP;
+        tank.body.rotation.z = 0;
         tank.chargeGlow.visible = false;
-      }
-
-      // Shield bubble + burn tint reflect status effects.
-      tank.shieldBubble.visible = view.alive && view.shieldTime > 0;
-      const bodyMat = tank.body.material as THREE.MeshStandardMaterial;
-      if (view.burnTime > 0) {
-        bodyMat.emissive.setHex(0xff4400);
-        bodyMat.emissiveIntensity = 0.6;
-      } else {
-        bodyMat.emissiveIntensity = 0;
+        tank.shieldBubble.visible = false;
       }
     }
 
     for (const id of [...this.tanks.keys()]) {
       if (!players.has(id)) this.removeTank(id);
+    }
+  }
+
+  /** Swap hull + strip materials between live and scorched-wreck tints (on change only). */
+  private setDead(tank: TankView, dead: boolean): void {
+    if (tank.dead === dead) return;
+    tank.dead = dead;
+    const bodyMat = tank.body.material as THREE.MeshStandardMaterial;
+    const stripMat = tank.strip.material as THREE.MeshStandardMaterial;
+    if (dead) {
+      bodyMat.color.setHex(WRECK_COLOR);
+      bodyMat.emissive.setHex(0x000000);
+      bodyMat.emissiveIntensity = 0;
+      stripMat.color.setHex(WRECK_COLOR);
+      stripMat.emissive.setHex(0x000000);
+      stripMat.emissiveIntensity = 0;
+    } else {
+      bodyMat.color.setHex(tank.baseColor);
+      stripMat.color.setHex(ACCENT_COLOR);
+      stripMat.emissive.setHex(ACCENT_COLOR);
+      stripMat.emissiveIntensity = 0.6;
     }
   }
 
@@ -147,6 +191,6 @@ export class VehicleRenderer {
     shieldBubble.visible = false;
     group.add(shieldBubble);
 
-    return { group, barrel, chargeGlow, shieldBubble, body, team };
+    return { group, barrel, chargeGlow, shieldBubble, body, strip, baseColor: color, team, dead: false };
   }
 }

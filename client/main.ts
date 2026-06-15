@@ -16,6 +16,8 @@ import { LobbyUI } from "./ui/lobby";
 import { Minimap } from "./ui/minimap";
 
 const INPUT_SEND_HZ = 30;
+/** How much heavier the local player counts in the camera's weighted midpoint. */
+const CAMERA_LOCAL_WEIGHT = 1.8;
 
 const NAME_STORAGE_KEY = "tankclash:name";
 const CALLSIGN_ADJ = ["Iron", "Steel", "Rusty", "Viper", "Ghost", "Blitz", "Rogue", "Storm", "Cobra", "Nitro", "Ember", "Frost"];
@@ -352,29 +354,33 @@ async function boot() {
       net.terrain,
     );
 
-    // Camera: frame the local tank + nearest enemy, or pan across the arena.
-    if (!watching && local?.alive) {
-      let enemy: { x: number; y: number } | null = null;
-      let bestD = Infinity;
-      for (const p of tankPlayers.values()) {
-        if (!p.alive || p.team === local.team) continue;
-        const d = Math.abs(p.x - local.x);
-        if (d < bestD) {
-          bestD = d;
-          enemy = p;
-        }
-      }
-      followCam.update(local.x, local.y, Math.cos(local.aimAngle), dt, enemy);
-    } else if (tankPlayers.size > 0) {
+    // Camera: frame every living tank — weighted toward the local player when
+    // alive — and zoom out to fit how far they are spread across the arena.
+    const living: PlayerView[] = [];
+    for (const p of tankPlayers.values()) if (p.alive) living.push(p);
+    if (living.length > 0) {
+      const focusLocal = !watching && local?.alive ? local : null;
+      let wsum = 0;
       let cx = 0;
       let cy = 0;
-      for (const p of tankPlayers.values()) {
-        cx += p.x;
-        cy += p.y;
+      for (const p of living) {
+        const w = focusLocal && p.id === focusLocal.id ? CAMERA_LOCAL_WEIGHT : 1;
+        cx += p.x * w;
+        cy += p.y * w;
+        wsum += w;
       }
-      followCam.update(cx / tankPlayers.size, cy / tankPlayers.size, 0, dt);
+      cx /= wsum;
+      cy /= wsum;
+      let spanX = 0;
+      let spanY = 0;
+      for (const p of living) {
+        spanX = Math.max(spanX, Math.abs(p.x - cx));
+        spanY = Math.max(spanY, Math.abs(p.y - cy));
+      }
+      const aimLead = focusLocal ? Math.cos(focusLocal.aimAngle) : 0;
+      followCam.update(cx, cy, spanX, spanY, aimLead, dt);
     } else {
-      followCam.update(WORLD_WIDTH / 2, WORLD_HEIGHT * 0.4, 0, dt);
+      followCam.update(WORLD_WIDTH / 2, WORLD_HEIGHT * 0.4, 0, 0, 0, dt);
     }
 
     // ── Screen-driven HUD/overlay visibility ──────────────────────────────────

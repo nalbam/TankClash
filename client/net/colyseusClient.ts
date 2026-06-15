@@ -46,6 +46,7 @@ export interface RoomListing {
   humans: number;
   capacity: number;
   host: string;
+  code: string;
 }
 
 export interface ProjectileView {
@@ -116,6 +117,7 @@ export class NetClient {
         humans: r.metadata?.humans ?? 0,
         capacity: r.metadata?.capacity ?? 2,
         host: r.metadata?.host ?? "",
+        code: r.metadata?.code ?? "",
       }));
     } catch {
       return [];

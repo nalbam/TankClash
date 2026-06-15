@@ -1,4 +1,4 @@
-import { Room, type Client } from "colyseus";
+import { matchMaker, Room, type Client } from "colyseus";
 import { FIXED_DT, PATCH_RATE } from "../../shared/constants";
 import { MSG, type TeamId, type TerrainInit } from "../../shared/types";
 import { BotController } from "../bots/BotController";
@@ -6,6 +6,18 @@ import { GameSim } from "../GameSim";
 import type { GameState } from "../schema/GameState";
 
 const BOT_NAMES = ["Rusty", "Boltz", "Crank", "Vex", "Hex", "Tor"];
+
+/** Code alphabet without easily-confused glyphs (no O/0, I/1). */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const CODE_LENGTH = 4;
+
+function randomCode(): string {
+  let s = "";
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  }
+  return s;
+}
 
 export class TankClashRoom extends Room<GameState> {
   maxClients = 8;
@@ -22,12 +34,13 @@ export class TankClashRoom extends Room<GameState> {
   /** Solo/bot matches can be truly paused; shared matches cannot. */
   private paused = false;
 
-  onCreate(options: { seed?: number; mode?: string } = {}) {
+  async onCreate(options: { seed?: number; mode?: string } = {}) {
     const seed = Number.isFinite(options.seed) ? Number(options.seed) >>> 0 : (Date.now() & 0x7fffffff) >>> 0;
     this.fillTo = options.mode === "2v2" ? 4 : 2;
     this.sim = new GameSim(seed, { lobbyMode: true, fillTo: this.fillTo });
     this.lastSeed = this.sim.state.terrainSeed;
     this.lastPhase = this.sim.state.phase;
+    this.sim.state.roomCode = await this.uniqueRoomCode();
     this.setState(this.sim.state);
     this.setPatchRate(1000 / PATCH_RATE);
     this.reconcileBots();
@@ -98,6 +111,25 @@ export class TankClashRoom extends Room<GameState> {
     this.afterLobbyChange();
   }
 
+  /** A code not currently used by any other live tankclash room. */
+  private async uniqueRoomCode(): Promise<string> {
+    const taken = new Set<string>();
+    try {
+      const rooms = await matchMaker.query({ name: "tankclash" });
+      for (const r of rooms) {
+        const code = (r.metadata as { code?: string } | undefined)?.code;
+        if (code) taken.add(code);
+      }
+    } catch {
+      /* matchmaker unavailable — fall back to a plain random code */
+    }
+    for (let i = 0; i < 20; i++) {
+      const code = randomCode();
+      if (!taken.has(code)) return code;
+    }
+    return randomCode();
+  }
+
   /** Re-fill bots (lobby only) and refresh matchmaking metadata. */
   private afterLobbyChange(): void {
     if (this.sim.state.phase === "lobby") this.reconcileBots();
@@ -149,6 +181,7 @@ export class TankClashRoom extends Room<GameState> {
       humans,
       capacity: this.fillTo,
       host,
+      code: this.sim.state.roomCode,
     });
   }
 

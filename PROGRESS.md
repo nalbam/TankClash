@@ -301,3 +301,62 @@ Verification gates: `npm run typecheck` · `npm test` · `npm run match:sim` · 
 - Follow-up worth noting: bots don't yet path around freshly-opened pits, so they
   can occasionally fall in — acceptable for now (matches still resolve), a future
   bot-awareness improvement.
+
+## Iteration 14 — 2026-06-15 (dead tanks linger as wrecks)
+
+- Changed: a killed tank now stays on the field as a scorched wreck instead of
+  vanishing. Root cause of the disappearance was purely client-side —
+  `vehicleRenderer` set `tank.group.visible = view.alive`, hiding the whole
+  model on death. The server already preserves a dead fighter's `x/y/tilt` and
+  `alive=false` (`GameSim.tick` skips physics for `!p.alive`, so the corpse
+  freezes in place), so only the renderer changed: a dead tank keeps
+  `visible=true`, swaps hull + team-strip materials to a burnt tint
+  (`0x2b2b2b`), lists `WRECK_LEAN` past the terrain tilt with the barrel drooped
+  (`-0.6`), and drops charge glow / shield. `setDead` swaps materials only on the
+  live↔dead transition; respawn (`resetRound`) restores the team color via the
+  stored `baseColor`. Spectators are unaffected — `main.ts` already excludes them
+  from the tank set.
+- Gates: typecheck PASS | tests PASS (71/71) | bot match PASS | screenshots OK
+- Measurements:
+  - deterministic scene-graph assertion (temporary `__vehicles` exposure, then
+    reverted): at round end the dead blue tank reads `dead=true`,
+    `visible=true`, hull `0x2b2b2b`, group `rotZ=-0.822`, barrel `-0.6`; the
+    surviving red bot stays normal (`0xff5d5d`, live aim angle)
+  - match:sim unchanged (server logic untouched); screenshot gate green
+- Scope: client-render-only change, no server edits. The corpse sits at the
+  position it died at (server halts its physics on death).
+- Follow-up: on the win screen the camera frames the midpoint of both spawns at a
+  fixed zoom, so a corpse far from the survivor can fall outside the frame — a
+  camera-framing concern, separate from the wreck rendering itself (covered by
+  the pending weighted-midpoint / dynamic-zoom camera work in `.prompt.md`).
+
+## Iteration 15 — 2026-06-15 (shareable room codes + all-tank camera framing)
+
+- Changed two `.prompt.md` items:
+  1. **Unique room codes.** Colyseus already assigned a unique internal
+     `roomId`, but there was no human-readable code to share. Each room now mints
+     a 4-char code from a confusion-free alphabet (no O/0, I/1). `onCreate`
+     queries `matchMaker` for live rooms and re-rolls until the code is unused,
+     then publishes it on `GameState.roomCode` and matchmaking `metadata.code`.
+     The browser shows it as a chip beside the mode; the in-room lobby shows
+     `ROOM CODE · XXXX` under the title. Per the user's choice, "unique room" =
+     a shareable code; a join-by-code input box is out of scope (rooms are still
+     joined by clicking the listing, which now carries the code).
+  2. **All-tank camera framing.** The camera previously framed only the local
+     tank + its nearest enemy, so in 2v2 a teammate or the far enemy fell off
+     screen. It now aims at the weighted midpoint of *every living tank* (the
+     local player counts `CAMERA_LOCAL_WEIGHT`=1.8×) and zooms to the largest
+     distance from that midpoint to any tank. `FollowCamera.update` was
+     generalized from a two-point (focus, enemy) form to a (center, spanX,
+     spanY) form; `CAMERA_Z_MAX` 135→165 to fit a 2v2 spread.
+- Gates: typecheck PASS | tests PASS (71/71) | bot match PASS | screenshots OK
+- Measurements:
+  - uniqueness: a one-off integration script created **6 rooms concurrently**
+    (worst case for same-ms collisions) — all six codes were distinct and
+    well-formed (`T4HF 533D 9DDK 8KJF NWHD S3QU`)
+  - `screenshots/lobby-browser.png` shows the code chip in the room row;
+    `screenshots/lobby-room.png` shows `ROOM CODE · 52AX` under the lobby title
+  - `screenshots/match-2v2.png` now frames all four living tanks (both blue, both
+    red) at once — previously only the nearest enemy stayed in view
+- Follow-up: a join-by-code input box / `?room=CODE` deep link would complete the
+  share flow; deferred as a separate feature.

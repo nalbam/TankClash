@@ -1,5 +1,5 @@
 import { CANNON, SELECTABLE_WEAPONS, WEAPONS } from "@shared/weapons";
-import { WORLD_HEIGHT, WORLD_WIDTH } from "@shared/constants";
+import { MATCH, WORLD_HEIGHT, WORLD_WIDTH } from "@shared/constants";
 import { AudioManager } from "./audio/audio";
 import { InputManager } from "./input/input";
 import { NetClient, type PlayerView } from "./net/colyseusClient";
@@ -79,6 +79,7 @@ async function boot() {
   let inputAccumulator = 0;
   let predictedCharge = 0;
   let fps = 60;
+  let endedAt = 0; // timestamp the match entered "ended" (for the lobby-return countdown)
 
   // ── HUD element refs for screen-based visibility ────────────────────────────
   const hudStatus = document.getElementById("hud-status")!;
@@ -235,6 +236,14 @@ async function boot() {
     const inLobby = inRoom && (phase === "lobby" || phase === "countdown");
     const watching = net.watching;
 
+    // Countdown to the automatic lobby return shown on the win screen.
+    if (phase === "ended") {
+      if (endedAt === 0) endedAt = now;
+    } else {
+      endedAt = 0;
+    }
+    const endRemaining = phase === "ended" ? Math.max(0, MATCH.END_PAUSE_S - (now - endedAt) / 1000) : 0;
+
     // Terrain: full rebuilds on new rounds, incremental on craters.
     const terrainChanged = net.terrainVersion !== seenTerrainVersion;
     if (terrainChanged) {
@@ -384,7 +393,7 @@ async function boot() {
       hud.setLocal(watching ? undefined : local, predictedCharge);
       if (state) {
         hud.setWind(state.wind);
-        hud.setRound(phase, state.roundTime, state.winnerTeam);
+        hud.setRound(phase, state.roundTime, state.winnerTeam, endRemaining);
       }
       hud.updateLabels(tankPlayers, followCam.camera, net.sessionId);
       hud.updateScoreboard(tankPlayers, input.scoreboardOpen || phase === "ended");

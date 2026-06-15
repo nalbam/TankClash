@@ -42,12 +42,13 @@ export class LobbyUI {
   private redCol = el<HTMLDivElement>("lobby-red");
   private specCol = el<HTMLDivElement>("lobby-spectators");
   private readyBtn = el<HTMLButtonElement>("lobby-ready");
-  private teamBlueBtn = el<HTMLButtonElement>("lobby-team-blue");
-  private teamRedBtn = el<HTMLButtonElement>("lobby-team-red");
   private spectateBtn = el<HTMLButtonElement>("lobby-spectate");
   private startBtn = el<HTMLButtonElement>("lobby-start");
   private leaveBtn = el<HTMLButtonElement>("lobby-leave");
   private countdownEl = el<HTMLDivElement>("lobby-countdown");
+
+  /** True during the start countdown — team-box clicks are locked. */
+  private counting = false;
 
   constructor(browserCbs: BrowserCallbacks, lobbyCbs: LobbyCallbacks) {
     el<HTMLButtonElement>("create-1v1").addEventListener("click", () => browserCbs.onCreate("1v1"));
@@ -55,8 +56,13 @@ export class LobbyUI {
     el<HTMLButtonElement>("browser-reroll").addEventListener("click", () => browserCbs.onReroll());
 
     this.readyBtn.addEventListener("click", () => lobbyCbs.onReadyToggle());
-    this.teamBlueBtn.addEventListener("click", () => lobbyCbs.onSelectTeam("blue"));
-    this.teamRedBtn.addEventListener("click", () => lobbyCbs.onSelectTeam("red"));
+    // Clicking a team box switches onto that team (the server rejects a full side).
+    this.blueCol.addEventListener("click", () => {
+      if (!this.counting) lobbyCbs.onSelectTeam("blue");
+    });
+    this.redCol.addEventListener("click", () => {
+      if (!this.counting) lobbyCbs.onSelectTeam("red");
+    });
     this.spectateBtn.addEventListener("click", () => lobbyCbs.onSpectateToggle());
     this.startBtn.addEventListener("click", () => lobbyCbs.onStart());
     this.leaveBtn.addEventListener("click", () => lobbyCbs.onLeave());
@@ -137,6 +143,11 @@ export class LobbyUI {
     const watching = !me || me.spectator === true;
     const isHost = sessionId === state.hostId;
     const counting = state.phase === "countdown";
+    this.counting = counting;
+
+    // Team boxes are clickable in the lobby, locked during the countdown.
+    this.blueCol.classList.toggle("locked", counting);
+    this.redCol.classList.toggle("locked", counting);
 
     this.countdownEl.style.display = counting ? "block" : "none";
     if (counting) this.countdownEl.textContent = `STARTING IN ${Math.ceil(state.countdown)}`;
@@ -147,8 +158,6 @@ export class LobbyUI {
     this.readyBtn.style.display = showActions && !watching ? "" : "none";
     this.readyBtn.textContent = me?.ready ? "CANCEL" : "READY";
     this.readyBtn.classList.toggle("on", Boolean(me?.ready));
-    this.teamBlueBtn.style.display = showActions ? "" : "none";
-    this.teamRedBtn.style.display = showActions ? "" : "none";
     this.spectateBtn.style.display = showActions ? "" : "none";
     this.spectateBtn.textContent = watching ? "JOIN GAME" : "SPECTATE";
     this.startBtn.style.display = showActions && isHost ? "" : "none";

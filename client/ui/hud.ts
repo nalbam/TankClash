@@ -32,6 +32,7 @@ export class Hud {
   private killfeed = el<HTMLDivElement>("killfeed");
   private announce = el<HTMLDivElement>("announce");
   private announceTitle = el<HTMLHeadingElement>("announce-title");
+  private announceSub = el<HTMLParagraphElement>("announce-sub");
   private scoreboard = el<HTMLDivElement>("scoreboard");
   private scoreboardBody = el<HTMLTableSectionElement>("scoreboard-body");
   private labelsRoot = el<HTMLDivElement>("labels");
@@ -88,7 +89,7 @@ export class Hud {
     this.windValue.textContent = mag.toFixed(1);
   }
 
-  setRound(phase: string, roundTime: number, winnerTeam: string): void {
+  setRound(phase: string, roundTime: number, winnerTeam: string, endRemaining = 0): void {
     const remaining = Math.max(0, MATCH.ROUND_TIME_S - roundTime);
     const m = Math.floor(remaining / 60);
     const s = Math.floor(remaining % 60);
@@ -103,6 +104,8 @@ export class Hud {
         this.announceTitle.textContent = "DRAW";
         this.announceTitle.style.color = "var(--cream)";
       }
+      this.announceSub.textContent =
+        endRemaining > 0 ? `RETURNING TO LOBBY IN ${Math.ceil(endRemaining)} · ENTER TO SKIP` : "RETURNING TO LOBBY…";
     } else {
       this.announce.style.display = "none";
     }

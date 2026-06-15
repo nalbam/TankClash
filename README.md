@@ -12,7 +12,7 @@ knockback, status effects (shield/burn), round summaries, win/loss, round
 restart, and auto-reconnect.
 
 ![TankClash](screenshots/menu.png)
-![TankClash](screenshots/spectate.png)
+![TankClash](screenshots/match-2v2.png)
 
 Full documentation lives in [`docs/`](docs/README.md): [getting
 started](docs/getting-started.md), [architecture](docs/architecture.md),

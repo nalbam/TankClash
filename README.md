@@ -141,7 +141,7 @@ Four objective gates guard every change (see `PROGRESS.md` for the iteration log
 
 ```bash
 npm run typecheck   # tsc, zero errors
-npm test            # vitest: physics, terrain, damage, weapons, status, match, lobby, prediction, gamepad (61 tests)
+npm test            # vitest: physics, terrain, damage, weapons, status, match, lobby, prediction, gamepad (69 tests)
 npm run match:sim   # headless bot-vs-bot match: completes, no NaN, tick budget
 npm run screenshot  # Playwright: boots server+client, captures a live match
 ```

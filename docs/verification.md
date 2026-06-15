@@ -28,17 +28,17 @@ Passes with zero errors.
 npm test            # vitest run
 ```
 
-**61 tests** across nine files, covering the simulation's load-bearing logic:
+**69 tests** across nine files, covering the simulation's load-bearing logic:
 
 | File | Covers |
 | --- | --- |
-| `physics.test.ts` (11) | Projectile gravity, wind, terrain / vehicle collision; vehicle stepping |
-| `terrain.test.ts` (9) | Grid generation, crater carving, surface query, out-of-bounds policy (walls solid / floor absent / sky empty) |
+| `physics.test.ts` (15) | Projectile gravity, wind, terrain / vehicle collision; vehicle stepping, body tilt and aim-elevation limits |
+| `terrain.test.ts` (10) | Grid generation, crater carving, surface query, out-of-bounds policy (walls solid / floor absent / sky empty), per-layout generation + spawn footing |
 | `status.test.ts` (7) | Shield reduction, burn DoT, kill attribution |
 | `damage.test.ts` (6) | Splash falloff, direct-hit bonus, knockback, self-damage |
 | `weapons.test.ts` (6) | Per-weapon behavior (charge, spread, cluster split, drill pierce, pull, support) |
 | `match.test.ts` (4) | Round flow, sudden death, win detection, fall-death danger zone |
-| `lobby.test.ts` (11) | Lobby gating, team select caps, ready / host countdown (3s/10s), countdown→playing, host reassign, leave-to-spectate, ended→lobby |
+| `lobby.test.ts` (14) | Lobby gating, team select caps, ready / host countdown (3s/10s), countdown→playing, host reassign, leave-to-spectate, ended→lobby, input / weapon guards, 2v2 spawn spread |
 | `prediction.test.ts` (3) | Client prediction / reconciliation against authoritative state |
 | `gamepad.test.ts` (4) | Gamepad → `PlayerInput` mapping |
 

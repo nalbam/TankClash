@@ -86,18 +86,20 @@ restart. Keyboard/mouse and pad are interchangeable.
 The teal arc previews where your shot lands, accounting for the selected weapon,
 charge, and wind.
 
-## Modes
+## Rooms & modes
 
-Pick from the lobby menu, or pass a query parameter:
+The first screen is a **room browser**. Create a **1v1** or **2v2** room, or
+click an open room to join (a room already in battle is joined as a spectator).
+Inside the room's lobby you pick a team or spectate, ready up, and the **host**
+starts the match (3 s countdown if all ready, 10 s otherwise). Bots fill empty
+slots and a joining human replaces a bot.
 
-- **1v1** — you versus a bot (default)
-- **2v2** — `?mode=2v2`, teams of two (bots fill empty slots)
-- **Spectate** — `?mode=spectate`, watch a bot match with a free action camera,
-  no tank
+Leaving mid-match kills your tank and turns you into a spectator; `Esc` while
+spectating opens a menu to leave the room. A solo/bot match can still be frozen
+with `Esc` (pause).
 
-In a solo/bot match, `Esc` pause freezes the whole world (bots included). In a
-shared match it is a local menu and the game keeps running. "Quit to Lobby"
-returns to the menu.
+`?autostart` (optionally `?mode=2v2`) skips the browser, creates a room, and
+starts immediately — used by shareable links and the screenshot gate.
 
 ## Verifying a checkout
 

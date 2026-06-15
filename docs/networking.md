@@ -42,9 +42,17 @@ Message names are the `MSG` constants in `shared/types.ts`.
 | --- | --- | --- |
 | `input` | `PlayerInput` | Movement / aim / charge; coerced + bounded at the `setInput` boundary |
 | `selectWeapon` | weapon id (string) | Switch active weapon (ignored mid-charge / non-selectable) |
-| `restart` | — | Request a round restart (only honored in `ended` phase) |
+| `setReady` | boolean | Lobby: toggle the player's ready flag |
+| `selectTeam` | `"blue"` / `"red"` | Lobby: switch team (rejected if the side is full of humans) |
+| `setSpectator` | boolean | Drop to / rejoin from spectating; mid-match this kills the tank |
+| `startMatch` | — | Host-only: begin the start countdown |
+| `restart` | — | Request to leave the win screen (returns the room to the lobby) |
 | `pause` | boolean | Pause — only honored when ≤1 human is connected |
 | `ping` | timestamp | Server echoes it back as `pong` (latency display) |
+
+Lobby state (host, ready flags, team, spectator, countdown) is carried by the
+**schema patches**, not discrete messages. The room browser reads open rooms
+from a `GET /api/lobby` matchmaking feed (mode / phase / occupancy / host).
 
 ### Server → client
 

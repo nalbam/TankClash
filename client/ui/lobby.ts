@@ -1,0 +1,157 @@
+import type { RoomListing } from "../net/colyseusClient";
+
+function el<T extends HTMLElement>(id: string): T {
+  return document.getElementById(id) as T;
+}
+
+export interface BrowserCallbacks {
+  onCreate: (mode: "1v1" | "2v2") => void;
+  onReroll: () => void;
+}
+
+export interface LobbyCallbacks {
+  onReadyToggle: () => void;
+  onSelectTeam: (team: "blue" | "red") => void;
+  onSpectateToggle: () => void;
+  onStart: () => void;
+  onLeave: () => void;
+}
+
+/** Minimal view of the synced state the lobby needs (subset of GameState). */
+interface LobbyState {
+  phase: string;
+  hostId: string;
+  countdown: number;
+  players: { forEach: (cb: (p: any, id: string) => void) => void };
+}
+
+/**
+ * Owns the two pre-game screens: the room browser (list + create) and the
+ * in-room lobby (team columns, ready, host start, countdown). Reads from the
+ * synced schema each frame; mutations go back through the callbacks.
+ */
+export class LobbyUI {
+  private browser = el<HTMLDivElement>("browser");
+  private nameInput = el<HTMLInputElement>("browser-name");
+  private roomList = el<HTMLDivElement>("room-list");
+  private roomEmpty = el<HTMLDivElement>("room-empty");
+
+  private lobby = el<HTMLDivElement>("lobby");
+  private title = el<HTMLDivElement>("lobby-title");
+  private blueCol = el<HTMLDivElement>("lobby-blue");
+  private redCol = el<HTMLDivElement>("lobby-red");
+  private specCol = el<HTMLDivElement>("lobby-spectators");
+  private readyBtn = el<HTMLButtonElement>("lobby-ready");
+  private teamBlueBtn = el<HTMLButtonElement>("lobby-team-blue");
+  private teamRedBtn = el<HTMLButtonElement>("lobby-team-red");
+  private spectateBtn = el<HTMLButtonElement>("lobby-spectate");
+  private startBtn = el<HTMLButtonElement>("lobby-start");
+  private leaveBtn = el<HTMLButtonElement>("lobby-leave");
+  private countdownEl = el<HTMLDivElement>("lobby-countdown");
+
+  constructor(browserCbs: BrowserCallbacks, lobbyCbs: LobbyCallbacks) {
+    el<HTMLButtonElement>("create-1v1").addEventListener("click", () => browserCbs.onCreate("1v1"));
+    el<HTMLButtonElement>("create-2v2").addEventListener("click", () => browserCbs.onCreate("2v2"));
+    el<HTMLButtonElement>("browser-reroll").addEventListener("click", () => browserCbs.onReroll());
+
+    this.readyBtn.addEventListener("click", () => lobbyCbs.onReadyToggle());
+    this.teamBlueBtn.addEventListener("click", () => lobbyCbs.onSelectTeam("blue"));
+    this.teamRedBtn.addEventListener("click", () => lobbyCbs.onSelectTeam("red"));
+    this.spectateBtn.addEventListener("click", () => lobbyCbs.onSpectateToggle());
+    this.startBtn.addEventListener("click", () => lobbyCbs.onStart());
+    this.leaveBtn.addEventListener("click", () => lobbyCbs.onLeave());
+  }
+
+  get name(): string {
+    return this.nameInput.value.trim();
+  }
+  setName(v: string): void {
+    this.nameInput.value = v;
+  }
+
+  showBrowser(): void {
+    this.browser.style.display = "flex";
+  }
+  hideBrowser(): void {
+    this.browser.style.display = "none";
+  }
+  showLobby(): void {
+    this.lobby.style.display = "flex";
+  }
+  hideLobby(): void {
+    this.lobby.style.display = "none";
+  }
+
+  renderBrowser(rooms: RoomListing[]): void {
+    this.roomList.innerHTML = "";
+    this.roomEmpty.style.display = rooms.length === 0 ? "block" : "none";
+    for (const r of rooms) {
+      const open = r.phase === "lobby" && r.humans < r.capacity;
+      const row = document.createElement("div");
+      row.className = "room-row";
+      row.dataset.roomId = r.roomId;
+      const status = open ? "JOIN" : "WATCH";
+      const phaseLabel =
+        r.phase === "lobby" ? "in lobby" : r.phase === "countdown" ? "starting" : r.phase === "ended" ? "round over" : "in battle";
+      row.innerHTML =
+        `<div class="room-info">` +
+        `<span class="room-mode">${r.mode.toUpperCase()}</span>` +
+        `<span class="room-host">${r.host || "—"}</span>` +
+        `<span class="room-meta">${r.humans}/${r.capacity} players · ${phaseLabel}</span>` +
+        `</div><span class="room-join ${open ? "open" : "watch"}">${status}</span>`;
+      row.addEventListener("click", () => this.joinCb?.(r.roomId, !open));
+      this.roomList.appendChild(row);
+    }
+  }
+
+  /** Stored so renderBrowser rows can call back without rebuilding closures. */
+  private joinCb?: (roomId: string, asSpectator: boolean) => void;
+  bindJoin(cb: (roomId: string, asSpectator: boolean) => void): void {
+    this.joinCb = cb;
+  }
+
+  renderLobby(state: LobbyState, sessionId: string): void {
+    const blue: string[] = [];
+    const red: string[] = [];
+    const specs: string[] = [];
+    let me: any;
+    state.players.forEach((p: any, id: string) => {
+      if (id === sessionId) me = p;
+      const tag = (txt: string) => {
+        const you = id === sessionId ? " (you)" : "";
+        const host = id === state.hostId ? " 👑" : "";
+        const bot = p.isBot ? " 🤖" : "";
+        const ready = !p.spectator && !p.isBot ? (p.ready ? " ✓" : " ·") : "";
+        return `<div class="slot ${id === sessionId ? "me" : ""}">${txt}${you}${bot}${host}<span class="ready">${ready}</span></div>`;
+      };
+      if (p.spectator) specs.push(tag(p.name));
+      else if (p.team === "red") red.push(tag(p.name));
+      else blue.push(tag(p.name));
+    });
+    this.blueCol.innerHTML = `<div class="team-head team-blue">BLUE</div>${blue.join("") || '<div class="slot empty">— open —</div>'}`;
+    this.redCol.innerHTML = `<div class="team-head team-red">RED</div>${red.join("") || '<div class="slot empty">— open —</div>'}`;
+    this.specCol.innerHTML = specs.length
+      ? `<div class="team-head">SPECTATORS</div>${specs.join("")}`
+      : "";
+
+    const watching = !me || me.spectator === true;
+    const isHost = sessionId === state.hostId;
+    const counting = state.phase === "countdown";
+
+    this.countdownEl.style.display = counting ? "block" : "none";
+    if (counting) this.countdownEl.textContent = `STARTING IN ${Math.ceil(state.countdown)}`;
+    this.title.textContent = counting ? "GET READY" : "LOBBY";
+
+    // Action buttons are hidden during the countdown (leaving is locked).
+    const showActions = !counting;
+    this.readyBtn.style.display = showActions && !watching ? "" : "none";
+    this.readyBtn.textContent = me?.ready ? "CANCEL" : "READY";
+    this.readyBtn.classList.toggle("on", Boolean(me?.ready));
+    this.teamBlueBtn.style.display = showActions ? "" : "none";
+    this.teamRedBtn.style.display = showActions ? "" : "none";
+    this.spectateBtn.style.display = showActions ? "" : "none";
+    this.spectateBtn.textContent = watching ? "JOIN GAME" : "SPECTATE";
+    this.startBtn.style.display = showActions && isHost ? "" : "none";
+    this.leaveBtn.style.display = showActions ? "" : "none";
+  }
+}

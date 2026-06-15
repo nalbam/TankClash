@@ -28,7 +28,7 @@ Passes with zero errors.
 npm test            # vitest run
 ```
 
-**50 tests** across eight files, covering the simulation's load-bearing logic:
+**61 tests** across nine files, covering the simulation's load-bearing logic:
 
 | File | Covers |
 | --- | --- |
@@ -38,6 +38,7 @@ npm test            # vitest run
 | `damage.test.ts` (6) | Splash falloff, direct-hit bonus, knockback, self-damage |
 | `weapons.test.ts` (6) | Per-weapon behavior (charge, spread, cluster split, drill pierce, pull, support) |
 | `match.test.ts` (4) | Round flow, sudden death, win detection, fall-death danger zone |
+| `lobby.test.ts` (11) | Lobby gating, team select caps, ready / host countdown (3s/10s), countdown→playing, host reassign, leave-to-spectate, ended→lobby |
 | `prediction.test.ts` (3) | Client prediction / reconciliation against authoritative state |
 | `gamepad.test.ts` (4) | Gamepad → `PlayerInput` mapping |
 
@@ -68,11 +69,12 @@ Sudden death guarantees each match ends well before the
 npm run screenshot  # tsx scripts/screenshot.ts
 ```
 
-Launches server + client headlessly with **Playwright** (Chromium), joins a room
-with a bot, and captures screenshots at fixed times (e.g. t=2 s, t=10 s,
-t=30 s). The frames must show a **rendered battlefield** — never a blank or black
-canvas — proving both tanks framed, the aim arc, projectiles in flight, and
-visible terrain damage.
+Launches server + client headlessly with **Playwright** (Chromium) and walks the
+full flow with two pages: a solo `?autostart` match (in-game frames at t=2/10/30 s
+plus a solo-pause freeze check), then a host+joiner lobby that captures the **room
+browser**, the **lobby** (teams / ready / host), the host **countdown**, a live
+**2v2 match**, and **leave-to-spectate**. The 3D frames must show a rendered
+battlefield — never a blank or black canvas.
 
 > Run `npx playwright install chromium` once before this gate.
 

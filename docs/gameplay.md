@@ -99,12 +99,20 @@ particles, creating tactical timing windows.
 - After time expires, **sudden death** decays everyone's health at
   `SUDDEN_DEATH_DPS` 2/s so a match always resolves (the headless harness relies
   on this to stay finite).
-- On a win the world holds for `END_PAUSE_S` 4 s on the win screen, then
-  auto-restarts (or a player can request restart from the win screen).
+- On a win the world holds for `END_PAUSE_S` 4 s on the win screen.
 - Round reset regenerates terrain from a new seed, clears projectiles, respawns
-  players, and reseeds wind.
+  fighters, and reseeds wind.
 
-Phases: `waiting` (fewer than 2 tanks) → `playing` → `ended` (winner declared).
+Phases depend on how the `GameSim` is driven:
+
+- **Networked rooms** (`lobbyMode`): `lobby` → `countdown` → `playing` →
+  `ended` → back to `lobby`. The host starts the countdown — `COUNTDOWN_ALL_READY_S`
+  3 s if every human is ready, else `COUNTDOWN_DEFAULT_S` 10 s. Spectators are
+  excluded from spawns and win checks; leaving mid-match turns a fighter into a
+  spectator (a self-credited kill in the feed).
+- **Headless / solo** (`matchSim`, unit tests): `waiting` → `playing` → `ended`
+  → auto-restart, auto-starting once two fighters are present. This is what keeps
+  the bot-only harness finite and self-driving.
 
 ## Bots
 

@@ -48,6 +48,8 @@ export const STATUS = {
 export const MATCH = {
   ROUND_TIME_S: 120,
   SUDDEN_DEATH_DPS: 2, // health decay per second after round time
-  END_PAUSE_S: 4, // pause on win screen before auto-restart
+  END_PAUSE_S: 4, // pause on win screen before returning to the lobby
   FALL_KILL_Y: -5, // below world bottom = death zone
+  COUNTDOWN_ALL_READY_S: 3, // host start delay when every human is ready
+  COUNTDOWN_DEFAULT_S: 10, // host start delay when someone is not ready
 } as const;

@@ -104,40 +104,76 @@
 
       #overlay-msg { top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 20px; letter-spacing: 0.1em; }
 
-      #menu {
+      #browser, #lobby {
         position: absolute; inset: 0; z-index: 10;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 18px; background: radial-gradient(circle at 50% 40%, #16234a, #070b1d 80%);
+        display: none; flex-direction: column; align-items: center; justify-content: center;
+        gap: 16px; background: radial-gradient(circle at 50% 40%, #16234a, #070b1d 80%);
       }
-      #menu h1 { font-size: 64px; letter-spacing: 0.08em; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
-      #menu .tagline { color: var(--teal); letter-spacing: 0.2em; font-size: 13px; margin-top: -10px; }
-      #menu .name-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
-      #menu input {
+      #browser h1 { font-size: 56px; letter-spacing: 0.08em; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+      #browser .tagline { color: var(--teal); letter-spacing: 0.2em; font-size: 13px; margin-top: -10px; }
+      .name-row { display: flex; gap: 8px; align-items: center; }
+      #browser input {
         padding: 10px 14px; width: 240px; text-align: center;
         background: rgba(11,18,38,0.8); border: 1px solid rgba(45,212,191,0.4);
         border-radius: 8px; color: var(--cream); font-size: 15px;
       }
-      #reroll-btn {
+      #browser-reroll {
         padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 18px;
         background: rgba(255,255,255,0.05); border: 1px solid rgba(45,212,191,0.4);
         color: var(--cream); line-height: 1;
       }
-      #reroll-btn:hover { background: rgba(45,212,191,0.16); }
-      #menu .modes { display: flex; gap: 10px; margin-top: 6px; }
-      .mode-btn {
-        padding: 12px 18px; border-radius: 10px; cursor: pointer;
-        background: rgba(255,255,255,0.05); border: 1px solid transparent;
-        color: rgba(241,233,210,0.75); font-size: 14px; text-align: center; min-width: 120px;
+      #browser-reroll:hover { background: rgba(45,212,191,0.16); }
+      .create-row { display: flex; gap: 10px; }
+      .create-btn {
+        padding: 12px 24px; border-radius: 10px; cursor: pointer;
+        background: var(--teal); color: #06231f; font-weight: 700; font-size: 15px;
+        letter-spacing: 0.08em; border: none;
       }
-      .mode-btn .sub { display: block; font-size: 11px; color: rgba(241,233,210,0.45); margin-top: 3px; }
-      .mode-btn.active { background: rgba(45,212,191,0.16); border-color: var(--teal); color: var(--cream); }
-      #play-btn {
-        margin-top: 12px; padding: 14px 48px; border-radius: 10px; cursor: pointer;
-        background: var(--teal); color: #06231f; font-weight: 700; font-size: 18px;
-        letter-spacing: 0.1em; border: none;
+      .create-btn:hover { filter: brightness(1.1); }
+      .create-btn.alt { background: rgba(45,212,191,0.16); color: var(--cream); border: 1px solid var(--teal); }
+      .browser-label { font-size: 11px; letter-spacing: 0.2em; color: rgba(241,233,210,0.5); margin-top: 6px; }
+      #room-list {
+        width: min(560px, 90vw); max-height: 38vh; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 8px;
       }
-      #play-btn:hover { filter: brightness(1.1); }
-      #menu .hint { color: rgba(241,233,210,0.4); font-size: 12px; margin-top: 4px; }
+      .room-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 16px; border-radius: 10px; cursor: pointer;
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(45,212,191,0.25);
+      }
+      .room-row:hover { background: rgba(45,212,191,0.14); border-color: var(--teal); }
+      .room-info { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+      .room-mode { font-weight: 700; color: var(--teal); letter-spacing: 0.08em; }
+      .room-host { font-size: 13px; }
+      .room-meta { font-size: 11px; color: rgba(241,233,210,0.5); }
+      .room-join { font-weight: 700; font-size: 13px; letter-spacing: 0.1em; }
+      .room-join.open { color: #38e07b; }
+      .room-join.watch { color: rgba(241,233,210,0.6); }
+      #room-empty { color: rgba(241,233,210,0.4); font-size: 13px; }
+      #browser .hint { color: rgba(241,233,210,0.4); font-size: 12px; margin-top: 4px; }
+
+      #lobby-title { font-size: 40px; letter-spacing: 0.1em; }
+      #lobby-countdown { font-size: 28px; color: var(--orange); font-weight: 700; letter-spacing: 0.1em; display: none; }
+      .lobby-teams { display: flex; gap: 24px; align-items: flex-start; }
+      .team-col { min-width: 200px; min-height: 120px; padding: 12px; border-radius: 10px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(45,212,191,0.25); }
+      .team-head { font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; font-size: 13px; }
+      #lobby-spectators:empty { display: none; }
+      .slot { font-size: 14px; padding: 4px 2px; display: flex; justify-content: space-between; }
+      .slot.me { color: var(--teal); }
+      .slot.empty { color: rgba(241,233,210,0.35); }
+      .slot .ready { color: #38e07b; }
+      .lobby-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+      .lobby-actions button {
+        padding: 11px 22px; border-radius: 10px; cursor: pointer; font-size: 14px;
+        letter-spacing: 0.06em; border: 1px solid rgba(45,212,191,0.4);
+        background: rgba(45,212,191,0.12); color: var(--cream);
+      }
+      .lobby-actions button:hover { background: rgba(45,212,191,0.22); }
+      #lobby-ready.on { background: #38e07b; color: #06231f; border-color: #38e07b; font-weight: 700; }
+      #lobby-start { background: var(--teal); color: #06231f; font-weight: 700; border: none; }
+      #lobby-leave { border-color: rgba(255,93,93,0.4); background: rgba(255,93,93,0.12); }
+      #lobby-leave:hover { background: rgba(255,93,93,0.22); }
 
       #pause-menu {
         position: absolute; inset: 0; z-index: 9; display: none;
@@ -211,26 +247,45 @@
     </div>
 
     <div id="pause-menu">
-      <h2>PAUSED</h2>
-      <div class="pause-note">Esc or Start to resume</div>
+      <h2 id="pause-title">PAUSED</h2>
+      <div class="pause-note" id="pause-note">Esc to resume</div>
       <button id="resume-btn">Resume</button>
-      <button id="quit-btn">Quit to Lobby</button>
+      <button id="quit-btn">Quit</button>
     </div>
 
-    <div id="menu">
+    <div id="browser">
       <h1>🪖 TankClash ⚔️</h1>
       <div class="tagline">REAL-TIME ARTILLERY COMBAT</div>
       <div class="name-row">
-        <input id="menu-name" type="text" maxlength="16" placeholder="Call sign" />
-        <button id="reroll-btn" type="button" title="Random call sign">🎲</button>
+        <input id="browser-name" type="text" maxlength="16" placeholder="Call sign" />
+        <button id="browser-reroll" type="button" title="Random call sign">🎲</button>
       </div>
-      <div class="modes">
-        <div class="mode-btn active" data-mode="1v1">1v1<span class="sub">vs Bot</span></div>
-        <div class="mode-btn" data-mode="2v2">2v2<span class="sub">teams of two</span></div>
-        <div class="mode-btn" data-mode="spectate">Spectate<span class="sub">watch bots</span></div>
+      <div class="create-row">
+        <button id="create-1v1" class="create-btn">CREATE 1v1</button>
+        <button id="create-2v2" class="create-btn alt">CREATE 2v2</button>
       </div>
-      <button id="play-btn">PLAY</button>
+      <div class="browser-label">OPEN ROOMS</div>
+      <div id="room-list"></div>
+      <div id="room-empty">No rooms yet — create one to start.</div>
       <div class="hint">A/D move · Space jump · Shift dash · Mouse aim · Hold LMB to charge · 1–0 weapons</div>
+    </div>
+
+    <div id="lobby">
+      <div id="lobby-title">LOBBY</div>
+      <div id="lobby-countdown"></div>
+      <div class="lobby-teams">
+        <div id="lobby-blue" class="team-col"></div>
+        <div id="lobby-red" class="team-col"></div>
+      </div>
+      <div id="lobby-spectators" class="team-col" style="border:none;background:none;min-height:0"></div>
+      <div class="lobby-actions">
+        <button id="lobby-ready">READY</button>
+        <button id="lobby-team-blue">BLUE</button>
+        <button id="lobby-team-red">RED</button>
+        <button id="lobby-spectate">SPECTATE</button>
+        <button id="lobby-start">START</button>
+        <button id="lobby-leave">LEAVE</button>
+      </div>
     </div>
     <script type="module" src="/main.ts"></script>
   </body>

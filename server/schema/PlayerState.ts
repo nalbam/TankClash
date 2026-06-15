@@ -23,6 +23,10 @@ export class PlayerState extends Schema {
   @type("number") shieldTime = 0;
   /** Remaining burn time (s); ticks damage-over-time. */
   @type("number") burnTime = 0;
+  /** Lobby: marked ready to start. Bots are treated as always ready. */
+  @type("boolean") ready = false;
+  /** Watching, not fighting: no tank, excluded from spawns and win checks. */
+  @type("boolean") spectator = false;
 
   // Server-only runtime fields (not decorated → not synchronized).
   input: PlayerInput = {

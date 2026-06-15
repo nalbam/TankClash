@@ -100,7 +100,7 @@ systems under `server/systems/`:
 | `damageSystem` | `applyExplosion` (splash falloff, direct-hit bonus, knockback, self-damage, pull, burn, team support) and `stepStatus` (shield / burn ticks) |
 | `terrainSystem` | `carveCrater` — applies a crater to the grid and records the event |
 | `windSystem` | Gradual wind drift toward a periodically resampled target |
-| `matchSystem` | Round timer, sudden death, win detection, end-pause, restart |
+| `matchSystem` | Lobby / countdown gating, round timer, sudden death, win detection, end-pause, restart (or return-to-lobby) |
 
 Cluster weapons and drills are handled in `GameSim` itself: a drill carves a
 tunnel each tick until its `pierce` budget is spent, then detonates; a cluster
@@ -110,17 +110,24 @@ it stays reproducible).
 ### Schema
 
 `server/schema/` defines the Colyseus-synchronized state — `GameState`
-(phase, wind, round time, winner, the `players` and `projectiles` maps),
-`PlayerState`, and `ProjectileState`. Match phases are `waiting → playing →
-ended`.
+(phase, wind, round time, winner, host, countdown, the `players` and
+`projectiles` maps), `PlayerState` (incl. `ready` / `spectator`), and
+`ProjectileState`. Networked rooms run `lobby → countdown → playing → ended →
+lobby`; the headless sim runs `waiting → playing → ended`. The lobby/ready/host
+logic is driven by `GameSim` (constructed with `{ lobbyMode: true }`) so the
+networking-free path keeps auto-starting unchanged.
 
 ### Room & bots
 
 `server/rooms/TankClashRoom.ts` is the only networking-aware piece: it creates a
-`GameSim`, runs the fixed-timestep accumulator loop (capped at 5×`FIXED_DT` to
-avoid a spiral of death), sets the patch rate, routes client messages, fills the
-match with bots up to the mode's tank count (2 for 1v1, 4 for 2v2), and
-broadcasts drained events.
+`GameSim` (`lobbyMode: true`), runs the fixed-timestep accumulator loop (capped
+at 5×`FIXED_DT` to avoid a spiral of death), sets the patch rate, routes client
+messages, and broadcasts drained events. It also owns the lobby policy:
+`reconcileBots` keeps each side filled to `fillTo / 2` (humans first, bots topping
+up — so a joining human displaces a bot), routes join/leave to player-vs-spectator
+slots, and publishes matchmaking metadata (mode / phase / occupancy / host) for
+the `GET /api/lobby` room browser. Bot AI brains live in the room; their
+`PlayerState` lives in the sim.
 
 `server/bots/BotController` produces the **exact same `PlayerInput`** a human
 client sends — it moves, aims with a closed-form ballistic solver (weapon-aware
@@ -137,7 +144,7 @@ The client renders interpolated state and never decides outcomes.
 | Rendering | `render/scene.ts`, `camera.ts`, `effects.ts`, `terrainRenderer.ts`, `vehicleRenderer.ts`, `trajectory.ts` |
 | Net | `net/colyseusClient.ts`, `net/predictor.ts` |
 | Input | `input/input.ts` (keyboard / mouse / gamepad) |
-| UI | `ui/hud.ts`, `ui/minimap.ts` |
+| UI | `ui/hud.ts`, `ui/minimap.ts`, `ui/lobby.ts` (room browser + lobby panel) |
 | Audio | `audio/audio.ts` |
 | Entry | `main.ts` |
 

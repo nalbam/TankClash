@@ -49,6 +49,11 @@ export const MSG = {
   RESTART: "restart",
   SELECT_WEAPON: "selectWeapon",
   PAUSE: "pause",
+  // Lobby (client → server)
+  SET_READY: "setReady",
+  SELECT_TEAM: "selectTeam",
+  SET_SPECTATOR: "setSpectator",
+  START_MATCH: "startMatch",
   TERRAIN_INIT: "terrainInit",
   CRATER: "crater",
   EXPLOSION: "explosion",

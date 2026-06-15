@@ -31,6 +31,20 @@ export interface PlayerView {
   weapon: string;
   shieldTime: number;
   burnTime: number;
+  ready: boolean;
+  spectator: boolean;
+}
+
+/** One entry of the room browser, from Colyseus matchmaking metadata. */
+export interface RoomListing {
+  roomId: string;
+  clients: number;
+  maxClients: number;
+  mode: string;
+  phase: string;
+  humans: number;
+  capacity: number;
+  host: string;
 }
 
 export interface ProjectileView {
@@ -54,7 +68,7 @@ const BUFFER_LIMIT = 40;
  * between the two surrounding snapshots.
  */
 export class NetClient {
-  room!: Room;
+  room?: Room;
   sessionId = "";
   connected = false;
 
@@ -71,51 +85,102 @@ export class NetClient {
   /** True once a drop has been detected and a reconnect is pending. */
   reconnecting = false;
 
-  /** True when this client joined to watch, not play. */
-  spectator = false;
-
+  private client?: Client;
   private snapshots: Snapshot[] = [];
   private pingTimer?: ReturnType<typeof setInterval>;
   private reconnectName = "Player";
-  private joinOpts: { mode?: string; spectator?: boolean } = {};
+  private reconnectRoomId = "";
+  private joinOpts: { spectator?: boolean } = {};
 
-  async connect(name: string, opts: { mode?: string; spectator?: boolean } = {}): Promise<void> {
-    this.reconnectName = name;
-    this.joinOpts = opts;
-    this.spectator = opts.spectator === true;
-    const secure = location.protocol === "https:";
-    const url = `${secure ? "wss" : "ws"}://${__SERVER_URL__}`;
-    const client = new Client(url);
-    this.room = await client.joinOrCreate("tankclash", { name, ...opts });
-    this.sessionId = this.room.sessionId;
+  private ensureClient(): Client {
+    if (!this.client) {
+      const secure = location.protocol === "https:";
+      this.client = new Client(`${secure ? "wss" : "ws"}://${__SERVER_URL__}`);
+    }
+    return this.client;
+  }
+
+  /** Browse open rooms via the server's matchmaking feed. */
+  async listRooms(): Promise<RoomListing[]> {
+    try {
+      const secure = location.protocol === "https:";
+      const res = await fetch(`${secure ? "https" : "http"}://${__SERVER_URL__}/api/lobby`);
+      const rooms = (await res.json()) as Array<{ roomId: string; clients: number; maxClients: number; metadata: any }>;
+      return rooms.map((r) => ({
+        roomId: r.roomId,
+        clients: r.clients,
+        maxClients: r.maxClients,
+        mode: r.metadata?.mode ?? "1v1",
+        phase: r.metadata?.phase ?? "lobby",
+        humans: r.metadata?.humans ?? 0,
+        capacity: r.metadata?.capacity ?? 2,
+        host: r.metadata?.host ?? "",
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  async createRoom(name: string, mode: string): Promise<void> {
+    const room = await this.ensureClient().create("tankclash", { name, mode });
+    this.bindRoom(room, name, {});
+  }
+
+  async joinRoom(roomId: string, name: string, opts: { spectator?: boolean } = {}): Promise<void> {
+    const room = await this.ensureClient().joinById(roomId, { name, ...opts });
+    this.bindRoom(room, name, opts);
+  }
+
+  /** Leave the current room and return to a disconnected (browser) state. */
+  leaveRoom(): void {
+    if (this.pingTimer) clearInterval(this.pingTimer);
+    try {
+      this.room?.leave();
+    } catch {
+      /* already gone */
+    }
+    this.room = undefined;
+    this.sessionId = "";
+    this.connected = false;
+    this.reconnecting = false;
+    this.snapshots = [];
+  }
+
+  private bindRoom(room: Room, name: string, opts: { spectator?: boolean }): void {
+    this.room = room;
+    this.sessionId = room.sessionId;
     this.connected = true;
     this.reconnecting = false;
+    this.reconnectName = name;
+    this.reconnectRoomId = room.roomId;
+    this.joinOpts = opts;
+    this.snapshots = [];
 
-    this.room.onStateChange(() => this.captureSnapshot());
-    this.room.onLeave((code) => {
+    room.onStateChange(() => this.captureSnapshot());
+    room.onLeave((code) => {
       this.connected = false;
-      // Abnormal close (server/network drop): auto-reconnect with a fresh join.
-      // Normal close (code 1000, e.g. headless teardown) does nothing.
+      // Abnormal close (server/network drop): try to rejoin the same room.
+      // Normal close (code 1000, e.g. headless teardown or leaveRoom) does nothing.
       if (code !== 1000) this.scheduleReconnect();
     });
-    this.room.onError(() => {
+    room.onError(() => {
       this.connected = false;
     });
 
-    this.room.onMessage(MSG.TERRAIN_INIT, (init: TerrainInit) => {
+    room.onMessage(MSG.TERRAIN_INIT, (init: TerrainInit) => {
       this.terrain = TerrainGrid.generate(init.seed);
       for (const c of init.craters) this.terrain.carveCircle(c.x, c.y, c.r);
       this.terrainVersion++;
     });
-    this.room.onMessage(MSG.CRATER, (c: CraterEvent) => {
+    room.onMessage(MSG.CRATER, (c: CraterEvent) => {
       this.terrain.carveCircle(c.x, c.y, c.r);
       this.craterQueue.push(c);
     });
-    this.room.onMessage(MSG.EXPLOSION, (e: ExplosionEvent) => this.explosionQueue.push(e));
-    this.room.onMessage(MSG.FIRED, (f: FiredEvent) => this.firedQueue.push(f));
-    this.room.onMessage(MSG.KILL, (k: KillEvent) => {
-      const victim = this.room.state?.players?.get(k.victimId);
-      const killer = this.room.state?.players?.get(k.killerId);
+    room.onMessage(MSG.EXPLOSION, (e: ExplosionEvent) => this.explosionQueue.push(e));
+    room.onMessage(MSG.FIRED, (f: FiredEvent) => this.firedQueue.push(f));
+    room.onMessage(MSG.KILL, (k: KillEvent) => {
+      const victim = room.state?.players?.get(k.victimId);
+      const killer = room.state?.players?.get(k.killerId);
       this.killQueue.push({
         ...k,
         victimName: victim?.name ?? "?",
@@ -124,47 +189,72 @@ export class NetClient {
         killerTeam: killer?.team ?? "",
       });
     });
-    this.room.onMessage(MSG.PONG, (t: number) => {
+    room.onMessage(MSG.PONG, (t: number) => {
       this.ping = Math.round(performance.now() - t);
     });
 
     // Keep getStateCallbacks referenced for schema typing; snapshots drive rendering.
-    getStateCallbacks(this.room);
+    getStateCallbacks(room);
 
+    if (this.pingTimer) clearInterval(this.pingTimer);
     this.pingTimer = setInterval(() => {
-      if (this.connected) this.room.send(MSG.PING, performance.now());
+      if (this.connected) this.room?.send(MSG.PING, performance.now());
     }, 2000);
 
     this.captureSnapshot();
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnecting) return;
+    if (this.reconnecting || !this.reconnectRoomId) return;
     this.reconnecting = true;
     if (this.pingTimer) clearInterval(this.pingTimer);
+    let tries = 0;
     const attempt = () => {
-      this.connect(this.reconnectName, this.joinOpts).catch(() => {
-        // Retry until the server comes back.
-        setTimeout(attempt, 2000);
+      this.joinRoom(this.reconnectRoomId, this.reconnectName, this.joinOpts).catch(() => {
+        // The room may be gone (host left, auto-disposed). Give up after a few tries.
+        if (++tries < 4) setTimeout(attempt, 2000);
+        else this.reconnecting = false;
       });
     };
     setTimeout(attempt, 1500);
   }
 
+  /** True when the local client is currently watching (no living tank slot). */
+  get watching(): boolean {
+    const me = this.room?.state?.players?.get(this.sessionId);
+    return !me || me.spectator === true;
+  }
+
   sendInput(input: PlayerInput): void {
-    if (this.connected) this.room.send(MSG.INPUT, input);
+    if (this.connected) this.room?.send(MSG.INPUT, input);
   }
 
   sendRestart(): void {
-    if (this.connected) this.room.send(MSG.RESTART);
+    if (this.connected) this.room?.send(MSG.RESTART);
   }
 
   sendSelectWeapon(weaponId: string): void {
-    if (this.connected) this.room.send(MSG.SELECT_WEAPON, weaponId);
+    if (this.connected) this.room?.send(MSG.SELECT_WEAPON, weaponId);
   }
 
   sendPause(paused: boolean): void {
-    if (this.connected) this.room.send(MSG.PAUSE, paused);
+    if (this.connected) this.room?.send(MSG.PAUSE, paused);
+  }
+
+  sendReady(ready: boolean): void {
+    if (this.connected) this.room?.send(MSG.SET_READY, ready);
+  }
+
+  sendSelectTeam(team: string): void {
+    if (this.connected) this.room?.send(MSG.SELECT_TEAM, team);
+  }
+
+  sendSpectator(spectate: boolean): void {
+    if (this.connected) this.room?.send(MSG.SET_SPECTATOR, spectate);
+  }
+
+  sendStart(): void {
+    if (this.connected) this.room?.send(MSG.START_MATCH);
   }
 
   get state() {
@@ -173,7 +263,7 @@ export class NetClient {
 
   private captureSnapshot(): void {
     // The first patch may not have arrived yet right after join.
-    if (!this.room.state?.players) return;
+    if (!this.room?.state?.players) return;
     const players = new Map<string, PlayerView>();
     this.room.state.players.forEach((p: any, id: string) => {
       players.set(id, {
@@ -196,6 +286,8 @@ export class NetClient {
         weapon: p.weapon,
         shieldTime: p.shieldTime,
         burnTime: p.burnTime,
+        ready: p.ready,
+        spectator: p.spectator,
       });
     });
     const projectiles = new Map<string, ProjectileView>();

@@ -1,4 +1,4 @@
-import { FIXED_DT, PLAYER_MAX_HEALTH, VEHICLE, WORLD_WIDTH } from "../shared/constants";
+import { FIXED_DT, MATCH, PLAYER_MAX_HEALTH, VEHICLE, WORLD_WIDTH } from "../shared/constants";
 import { clamp, createRng, randRange } from "../shared/math";
 import { TerrainGrid } from "../shared/terrain";
 import type { CraterEvent, PlayerInput, TeamId } from "../shared/types";
@@ -25,30 +25,101 @@ export class GameSim {
   craters: CraterEvent[] = [];
   events: SimEvents = createSimEvents();
 
+  /** Networked rooms run host-driven lobbies; the headless sim auto-starts. */
+  readonly lobbyMode: boolean;
+  /** Fighters to keep per match (humans + bots): 2 for 1v1, 4 for 2v2. */
+  readonly fillTo: number;
+
   private rng: () => number;
   private wind: WindRuntime = { target: 0, timer: 0 };
-  private match: MatchRuntime = { endTimer: 0, wantsRestart: false };
+  private match: MatchRuntime;
   private nextProjId = 1;
   private joinCounter = 0;
 
-  constructor(seed: number) {
+  constructor(seed: number, opts: { lobbyMode?: boolean; fillTo?: number } = {}) {
+    this.lobbyMode = opts.lobbyMode === true;
+    this.fillTo = opts.fillTo ?? 2;
+    this.match = { endTimer: 0, wantsRestart: false, wantsLobby: false, lobbyMode: this.lobbyMode };
     this.rng = createRng(seed >>> 0);
     this.state.terrainSeed = seed >>> 0;
     this.terrain = TerrainGrid.generate(this.state.terrainSeed);
+    if (this.lobbyMode) this.state.phase = "lobby";
   }
 
-  addPlayer(id: string, name: string, isBot: boolean): PlayerState {
+  addPlayer(id: string, name: string, isBot: boolean, spectator = false, forceTeam?: TeamId): PlayerState {
     const p = new PlayerState();
     p.name = name;
     p.isBot = isBot;
-    p.team = (this.joinCounter++ % 2 === 0 ? "blue" : "red") as TeamId;
+    p.spectator = spectator;
+    if (spectator) {
+      p.team = "blue";
+      p.alive = false;
+      this.state.players.set(id, p);
+      return p;
+    }
+    // Lobby mode balances onto the smaller team; the headless path alternates.
+    p.team = forceTeam ?? (this.lobbyMode ? this.smallerTeam() : ((this.joinCounter++ % 2 === 0 ? "blue" : "red") as TeamId));
     this.state.players.set(id, p);
     this.spawnPlayer(p);
+    if (this.lobbyMode && !isBot && !this.state.hostId) this.state.hostId = id;
     return p;
   }
 
   removePlayer(id: string): void {
+    const wasHost = this.state.hostId === id;
     this.state.players.delete(id);
+    if (wasHost) this.reassignHost();
+  }
+
+  /** The team with fewer fighters (ties → blue), for balanced auto-assignment. */
+  private smallerTeam(): TeamId {
+    let blue = 0;
+    let red = 0;
+    this.state.players.forEach((p) => {
+      if (p.spectator) return;
+      if (p.team === "blue") blue++;
+      else red++;
+    });
+    return red < blue ? "red" : "blue";
+  }
+
+  /** Count fighters (non-spectators) currently on a team. */
+  teamFighters(team: TeamId, excludeId?: string): number {
+    let n = 0;
+    this.state.players.forEach((p, id) => {
+      if (!p.spectator && p.team === team && id !== excludeId) n++;
+    });
+    return n;
+  }
+
+  /** Count human (non-bot) fighters on a team. */
+  humanFighters(team: TeamId, excludeId?: string): number {
+    let n = 0;
+    this.state.players.forEach((p, id) => {
+      if (!p.spectator && !p.isBot && p.team === team && id !== excludeId) n++;
+    });
+    return n;
+  }
+
+  /** Total fighters across both teams. */
+  fighterCount(): number {
+    let n = 0;
+    this.state.players.forEach((p) => {
+      if (!p.spectator) n++;
+    });
+    return n;
+  }
+
+  /** Hand the host role to another human (preferring an active fighter). */
+  private reassignHost(): void {
+    let fallback = "";
+    let next = "";
+    this.state.players.forEach((p, id) => {
+      if (p.isBot) return;
+      if (!fallback) fallback = id;
+      if (!next && !p.spectator) next = id;
+    });
+    this.state.hostId = next || fallback;
   }
 
   /** Network boundary: coerce and bound everything coming from clients. */
@@ -117,6 +188,10 @@ export class GameSim {
       this.match.wantsRestart = false;
       this.resetRound();
     }
+    if (this.match.wantsLobby) {
+      this.match.wantsLobby = false;
+      this.returnToLobby();
+    }
   }
 
   /** Explosion + optional cluster split into child projectiles. */
@@ -162,7 +237,96 @@ export class GameSim {
 
   /** Player-initiated restart from the win screen. */
   requestRestart(): void {
-    if (this.state.phase === "ended") this.match.wantsRestart = true;
+    if (this.state.phase !== "ended") return;
+    // Lobby rooms go back to the lobby; the headless/solo path restarts directly.
+    if (this.lobbyMode) this.match.wantsLobby = true;
+    else this.match.wantsRestart = true;
+  }
+
+  // ── Lobby commands (no-ops outside lobby mode) ──────────────────────────────
+
+  /** Toggle a fighter's ready flag (lobby phase only). */
+  setReady(id: string, ready: boolean): void {
+    if (!this.lobbyMode || this.state.phase !== "lobby") return;
+    const p = this.state.players.get(id);
+    if (!p || p.isBot || p.spectator) return;
+    p.ready = ready === true;
+  }
+
+  /**
+   * Switch a player onto a team during the lobby. A team that is already full of
+   * humans (cap = fillTo / 2) is rejected; otherwise the player joins and a bot
+   * is later reconciled off that team by the room.
+   */
+  selectTeam(id: string, team: unknown): void {
+    if (!this.lobbyMode || this.state.phase !== "lobby") return;
+    if (team !== "blue" && team !== "red") return;
+    const p = this.state.players.get(id);
+    if (!p || p.isBot) return;
+    const cap = Math.max(1, Math.floor(this.fillTo / 2));
+    if (this.humanFighters(team, id) >= cap) return; // side already full of humans
+    p.spectator = false;
+    p.team = team;
+    p.ready = false;
+    this.spawnPlayer(p);
+    if (!this.state.hostId) this.state.hostId = id;
+  }
+
+  /**
+   * Toggle spectator. `true` drops to watching — and in a live match that means
+   * the tank dies (self-kill in the feed). `false` rejoins a team in the lobby.
+   * Leaving is locked during the countdown.
+   */
+  setSpectator(id: string, spectate: boolean): void {
+    if (!this.lobbyMode) return;
+    const p = this.state.players.get(id);
+    if (!p || p.isBot) return;
+
+    if (spectate === true) {
+      if (p.spectator) return;
+      if (this.state.phase === "countdown") return; // can't bail mid-countdown
+      if (this.state.phase === "playing" && p.alive) {
+        p.alive = false;
+        p.health = 0;
+        this.events.kills.push({ victimId: id, killerId: id }); // "left the fight" death
+      }
+      p.spectator = true;
+      p.ready = false;
+      if (this.state.hostId === id) this.reassignHost();
+      return;
+    }
+
+    // Rejoin as a fighter — only meaningful while in the lobby.
+    if (this.state.phase !== "lobby" || !p.spectator) return;
+    const cap = Math.max(1, Math.floor(this.fillTo / 2));
+    if (this.humanFighters("blue") >= cap && this.humanFighters("red") >= cap) return; // no human slot
+    p.spectator = false;
+    p.team = this.smallerTeam();
+    p.ready = false;
+    this.spawnPlayer(p);
+    if (!this.state.hostId) this.state.hostId = id;
+  }
+
+  /** Host starts the match: 3 s if every human is ready, else 10 s. */
+  requestStart(id: string): void {
+    if (!this.lobbyMode || this.state.phase !== "lobby") return;
+    if (id !== this.state.hostId) return;
+    if (this.fighterCount() < 2) return;
+    let allReady = true;
+    this.state.players.forEach((p) => {
+      if (!p.spectator && !p.isBot && !p.ready) allReady = false;
+    });
+    this.state.countdown = allReady ? MATCH.COUNTDOWN_ALL_READY_S : MATCH.COUNTDOWN_DEFAULT_S;
+    this.state.phase = "countdown";
+  }
+
+  /** A connection dropped mid-match: register the death so the feed reflects it. */
+  notifyLeaveDuringMatch(id: string): void {
+    const p = this.state.players.get(id);
+    if (!p || p.spectator || !p.alive) return;
+    if (this.state.phase === "playing" || this.state.phase === "countdown") {
+      this.events.kills.push({ victimId: id, killerId: id });
+    }
   }
 
   drainEvents(): SimEvents {
@@ -178,11 +342,27 @@ export class GameSim {
     this.state.projectiles.forEach((_, id) => this.state.projectiles.delete(id));
     this.state.roundTime = 0;
     this.state.winnerTeam = "";
+    this.state.countdown = 0;
     this.state.wind = randRange(this.rng, -3, 3);
     this.wind.timer = 0;
 
-    this.state.players.forEach((p) => this.spawnPlayer(p));
-    this.state.phase = this.state.players.size >= 2 ? "playing" : "waiting";
+    this.state.players.forEach((p) => {
+      if (!p.spectator) this.spawnPlayer(p);
+    });
+    const fighters = this.fighterCount();
+    this.state.phase = fighters >= 2 ? "playing" : this.lobbyMode ? "lobby" : "waiting";
+  }
+
+  /** Lobby mode: after a match ends, return to the lobby and clear ready flags. */
+  private returnToLobby(): void {
+    this.state.projectiles.forEach((_, id) => this.state.projectiles.delete(id));
+    this.state.roundTime = 0;
+    this.state.winnerTeam = "";
+    this.state.countdown = 0;
+    this.state.players.forEach((p) => {
+      p.ready = false;
+    });
+    this.state.phase = "lobby";
   }
 
   private spawnPlayer(p: PlayerState): void {

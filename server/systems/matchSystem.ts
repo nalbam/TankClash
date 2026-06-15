@@ -5,14 +5,43 @@ import type { TeamId } from "../../shared/types";
 
 export interface MatchRuntime {
   endTimer: number;
-  /** Set when the ended-phase pause elapses; GameSim performs the reset. */
+  /** Set when a round should (re)start via terrain reset + spawn. */
   wantsRestart: boolean;
+  /** Lobby mode: set when the ended pause elapses to return to the lobby. */
+  wantsLobby: boolean;
+  /** True for networked rooms (host-driven start); false for the headless sim. */
+  lobbyMode: boolean;
 }
 
-/** Round flow: waiting → playing → ended → (pause) → restart. */
+/** Number of players that actually fight (humans + bots, excluding spectators). */
+function fighterCount(state: GameState): number {
+  let n = 0;
+  state.players.forEach((p) => {
+    if (!p.spectator) n++;
+  });
+  return n;
+}
+
+/**
+ * Round flow.
+ * - Headless / non-lobby: waiting → playing → ended → (pause) → restart.
+ * - Lobby mode: lobby → countdown → playing → ended → (pause) → lobby.
+ */
 export function stepMatch(state: GameState, runtime: MatchRuntime, events: SimEvents, dt: number): void {
+  if (state.phase === "lobby") {
+    return; // host-driven: the match starts when the host triggers the countdown
+  }
+
+  if (state.phase === "countdown") {
+    state.countdown = Math.max(0, state.countdown - dt);
+    if (state.countdown <= 0) {
+      runtime.wantsRestart = true; // spawn everyone and flip to playing
+    }
+    return;
+  }
+
   if (state.phase === "waiting") {
-    if (state.players.size >= 2) {
+    if (!runtime.lobbyMode && fighterCount(state) >= 2) {
       runtime.wantsRestart = true; // first round starts via the same reset path
     }
     return;
@@ -46,7 +75,7 @@ export function stepMatch(state: GameState, runtime: MatchRuntime, events: SimEv
     state.players.forEach((p) => {
       if (p.alive) aliveTeams.add(p.team);
     });
-    if (aliveTeams.size <= 1 && state.players.size >= 2) {
+    if (aliveTeams.size <= 1 && fighterCount(state) >= 2) {
       state.phase = "ended";
       state.winnerTeam = aliveTeams.size === 1 ? [...aliveTeams][0] : "";
       runtime.endTimer = MATCH.END_PAUSE_S;
@@ -57,6 +86,7 @@ export function stepMatch(state: GameState, runtime: MatchRuntime, events: SimEv
   // phase === "ended"
   runtime.endTimer -= dt;
   if (runtime.endTimer <= 0) {
-    runtime.wantsRestart = true;
+    if (runtime.lobbyMode) runtime.wantsLobby = true; // back to the lobby for re-ready
+    else runtime.wantsRestart = true;
   }
 }

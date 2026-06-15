@@ -42,9 +42,10 @@ npm run dev
 - Server (Colyseus) → `http://localhost:2567`
 - Client (Vite) → `http://localhost:8080`
 
-Open `http://localhost:8080` in a browser. A bot fills the opposing slot
-automatically when you are alone, so the match is playable immediately. Open a
-second browser tab to play 1v1 against another human.
+Open `http://localhost:8080` in a browser. The first screen is a **room
+browser**: create a 1v1 / 2v2 room or join an open one. Inside the room, bots
+fill any empty slots, so a match is always playable; open a second browser tab
+and join the same room to play against another human.
 
 Run the pieces separately if you prefer:
 
@@ -80,7 +81,7 @@ SERVER_URL="game.example.com:2567" npm run build
 | `1`–`9`, `0` | select weapon |
 | `Tab` | scoreboard |
 | `Enter` | restart (on the win screen) |
-| `Esc` | pause menu (resume / quit to lobby) |
+| `Esc` | pause menu (resume / leave match → spectate; spectators leave the room) |
 
 A **gamepad** also works (standard mapping): left stick / d-pad move, A jump,
 B dash, right trigger charge/fire, right stick aim, LB/RB cycle weapons, Start
@@ -110,17 +111,29 @@ a **plateau** with a central chasm, hollow **caverns**, and **islands** over
 deep gaps. Shield and burn are status effects (shield reduces incoming damage;
 burn ticks damage over time).
 
-## Modes
+## Rooms, teams & ready-up
 
-Pick from the lobby menu (or pass `?mode=2v2` / `?mode=spectate` in the URL):
+The first screen lists open rooms. **Create** a 1v1 or 2v2 room, or click an
+existing one to **join** (rooms already in battle are joined as a spectator).
 
-- **1v1** — you versus a bot
-- **2v2** — teams of two (bots fill empty slots)
-- **Spectate** — watch a bot match with a free action camera, no tank
+Inside a room's lobby you can:
 
-Press `Esc` in-match for the pause menu. In a solo/bot match pause freezes the
-whole world (bots included); in a shared match it's a local menu and the game
-keeps running. "Quit to Lobby" returns you to the menu.
+- switch **team** (blue / red) or drop to **spectate**;
+- toggle **ready**;
+- **leave** back to the browser.
+
+Bots fill every empty fighter slot, and a joining human **replaces a bot**. The
+first human in a room is the **host** — only the host can **start**. On start,
+the match begins after a **3 s** countdown if everyone is ready, or **10 s**
+otherwise. You can't leave while the countdown runs.
+
+Leaving mid-match (the pause menu's "Leave Match", or `Esc`) **kills your tank
+and turns you into a spectator**; from spectator, `Esc` opens a menu to leave the
+room. When a match ends the room returns to the lobby for a re-ready. A solo/bot
+match can still be frozen with `Esc` (pause).
+
+A direct link with `?autostart` (optionally `?mode=2v2`) skips the browser,
+creates a room, and starts immediately — used by the screenshot gate.
 
 ## Verification
 
@@ -128,7 +141,7 @@ Four objective gates guard every change (see `PROGRESS.md` for the iteration log
 
 ```bash
 npm run typecheck   # tsc, zero errors
-npm test            # vitest: physics, terrain, damage, weapons, status, match, prediction, gamepad (50 tests)
+npm test            # vitest: physics, terrain, damage, weapons, status, match, lobby, prediction, gamepad (61 tests)
 npm run match:sim   # headless bot-vs-bot match: completes, no NaN, tick budget
 npm run screenshot  # Playwright: boots server+client, captures a live match
 ```

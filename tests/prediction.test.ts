@@ -52,6 +52,8 @@ function viewFromBody(body: VehicleBody, lastSeq: number): PlayerView {
     weapon: "cannon",
     shieldTime: 0,
     burnTime: 0,
+    ready: false,
+    spectator: false,
   };
 }
 

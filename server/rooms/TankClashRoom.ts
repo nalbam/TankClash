@@ -33,6 +33,8 @@ export class TankClashRoom extends Room<GameState> {
   private botSeq = 0;
   /** Solo/bot matches can be truly paused; shared matches cannot. */
   private paused = false;
+  /** Per-session sliding-window message counter for flood protection. */
+  private msgCounts = new Map<string, { windowStart: number; count: number }>();
 
   async onCreate(options: { seed?: number; mode?: string } = {}) {
     const seed = Number.isFinite(options.seed) ? Number(options.seed) >>> 0 : (Date.now() & 0x7fffffff) >>> 0;
@@ -57,40 +59,51 @@ export class TankClashRoom extends Room<GameState> {
     });
 
     this.onMessage(MSG.INPUT, (client, message) => {
+      if (!this.allowMessage(client.sessionId)) return;
       this.sim.setInput(client.sessionId, message);
     });
-    this.onMessage(MSG.RESTART, () => {
+    this.onMessage(MSG.RESTART, (client) => {
+      if (!this.allowMessage(client.sessionId)) return;
       this.sim.requestRestart();
     });
     this.onMessage(MSG.SELECT_WEAPON, (client, weaponId) => {
+      if (!this.allowMessage(client.sessionId)) return;
       if (typeof weaponId === "string") this.sim.selectWeapon(client.sessionId, weaponId);
     });
     this.onMessage(MSG.SET_READY, (client, ready) => {
+      if (!this.allowMessage(client.sessionId)) return;
       this.sim.setReady(client.sessionId, ready === true);
     });
     this.onMessage(MSG.SELECT_TEAM, (client, team) => {
+      if (!this.allowMessage(client.sessionId)) return;
       this.sim.selectTeam(client.sessionId, team);
       this.afterLobbyChange();
     });
     this.onMessage(MSG.SET_SPECTATOR, (client, spectate) => {
+      if (!this.allowMessage(client.sessionId)) return;
       this.sim.setSpectator(client.sessionId, spectate === true);
       this.afterLobbyChange();
     });
     this.onMessage(MSG.START_MATCH, (client) => {
+      if (!this.allowMessage(client.sessionId)) return;
       this.sim.requestStart(client.sessionId);
     });
-    this.onMessage(MSG.PAUSE, (_client, paused) => {
+    this.onMessage(MSG.PAUSE, (client, paused) => {
+      if (!this.allowMessage(client.sessionId)) return;
       // Only honor pause when a single human is connected (solo/bot match).
       if (this.clients.length <= 1) this.paused = paused === true;
     });
     this.onMessage(MSG.PING, (client, t) => {
+      if (!this.allowMessage(client.sessionId)) return;
       client.send(MSG.PONG, t);
     });
   }
 
   onJoin(client: Client, options: { name?: string; spectator?: boolean } = {}) {
     const name =
-      typeof options.name === "string" && options.name.trim() ? options.name.trim().slice(0, 16) : "Player";
+      typeof options.name === "string" && options.name.trim()
+        ? options.name.trim().slice(0, 16).replace(/[<>]/g, "")
+        : "Player";
     // A client can only fight if it asked to play, the room is still in the
     // lobby, and there is an open human slot — otherwise it watches.
     const cap = Math.max(1, Math.floor(this.fillTo / 2));
@@ -107,8 +120,21 @@ export class TankClashRoom extends Room<GameState> {
   onLeave(client: Client) {
     this.sim.notifyLeaveDuringMatch(client.sessionId); // death in the feed if mid-match
     this.sim.removePlayer(client.sessionId);
+    this.msgCounts.delete(client.sessionId);
     this.paused = false; // never strand the room paused after someone leaves
     this.afterLobbyChange();
+  }
+
+  /** Sliding 1s window, 200 msgs/session — generous for per-frame input. */
+  private allowMessage(sessionId: string): boolean {
+    const now = Date.now();
+    const e = this.msgCounts.get(sessionId);
+    if (!e || now - e.windowStart >= 1000) {
+      this.msgCounts.set(sessionId, { windowStart: now, count: 1 });
+      return true;
+    }
+    e.count++;
+    return e.count <= 200;
   }
 
   /** A code not currently used by any other live tankclash room. */

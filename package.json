@@ -1,6 +1,6 @@
 {
   "name": "tankclash",
-  "version": "0.0.0",
+  "version": "1.0.0.dev0",
   "private": true,
   "type": "module",
   "engines": {
